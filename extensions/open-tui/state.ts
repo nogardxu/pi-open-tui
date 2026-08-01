@@ -8,9 +8,6 @@ import { fmtTokens, formatProviderLabel } from "./utils.ts";
 export interface FooterState {
 	git: GitStatus;
 	runtime: RuntimeInfo | null;
-	sessionStartEpoch: number;
-	workingSince: number | undefined;
-	lastDoneIn: number | undefined;
 }
 
 export interface UsageTotals {
@@ -66,9 +63,6 @@ export function createInitialState(): FooterState {
 	return {
 		git: emptyGitStatus(),
 		runtime: null,
-		sessionStartEpoch: Date.now(),
-		workingSince: undefined,
-		lastDoneIn: undefined,
 	};
 }
 

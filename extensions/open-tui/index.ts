@@ -8,6 +8,7 @@ import { readRuntimeInfo } from "./runtime.ts";
 import { SessionLifecycle } from "./session-lifecycle.ts";
 import { registerSettingsCommand } from "./settings-command.ts";
 import { formatTurnTelemetry, TurnTelemetryTracker } from "./telemetry.ts";
+import { formatDuration } from "./utils.ts";
 import {
 	createInitialState,
 	getModelMeta,
@@ -57,6 +58,30 @@ export default function (pi: ExtensionAPI) {
 
 	const getThinkingLevel = () => (sessionLifecycle.isCurrent() ? pi.getThinkingLevel() : "off");
 
+	const stopWorkingDisplay = (ctx?: ExtensionContext) => {
+		if (workingTimer) {
+			clearInterval(workingTimer);
+			workingTimer = undefined;
+		}
+		if (ctx && isTuiContext(ctx) && typeof ctx.ui.setWorkingMessage === "function") {
+			ctx.ui.setWorkingMessage();
+		}
+	};
+
+	const startWorkingDisplay = (ctx: ExtensionContext) => {
+		stopWorkingDisplay(ctx);
+		if (!isTuiContext(ctx)) return;
+		const startedAt = Date.now();
+		if (typeof ctx.ui.setWorkingMessage !== "function") return;
+		const update = () => {
+			if (!sessionLifecycle.isCurrent() || !active) return;
+			ctx.ui.setWorkingMessage(`Working... ${formatDuration(Date.now() - startedAt)}`);
+		};
+		update();
+		workingTimer = setInterval(update, 1000);
+		workingTimer.unref?.();
+	};
+
 	const applyUi = (ctx: ExtensionContext) => {
 		if (!isTuiContext(ctx)) return;
 		if (!config.enabled) {
@@ -84,8 +109,15 @@ export default function (pi: ExtensionAPI) {
 		}
 	};
 
+	const refreshHeader = (ctx: ExtensionContext) => {
+		if (!isTuiContext(ctx) || !active || !config.enabled) return;
+		cleanupHeader?.();
+		cleanupHeader = installHeader(pi, ctx);
+	};
+
 	const uninstallUi = (ctx: ExtensionContext) => {
 		if (!isTuiContext(ctx)) return;
+		stopWorkingDisplay(ctx);
 		if (active) {
 			cleanupHeader?.();
 			cleanupFooter?.();
@@ -130,30 +162,9 @@ export default function (pi: ExtensionAPI) {
 		requestFooterRender?.();
 	};
 
-	const startWorkingTimer = () => {
-		stopWorkingTimer();
-		const tick = () => {
-			if (!sessionLifecycle.isCurrent() || !active) return;
-			requestFooterRender?.();
-		};
-		tick();
-		workingTimer = setInterval(tick, 250);
-		workingTimer.unref?.();
-	};
-
-	const stopWorkingTimer = () => {
-		if (workingTimer) {
-			clearInterval(workingTimer);
-			workingTimer = undefined;
-		}
-	};
-
 	pi.on("session_start", async (_event, ctx) => {
 		sessionLifecycle.start();
 		lastCtx = ctx;
-		state.sessionStartEpoch = Date.now();
-		state.workingSince = undefined;
-		state.lastDoneIn = undefined;
 		invalidateUsageCache();
 
 		ensureConfigExists();
@@ -163,35 +174,31 @@ export default function (pi: ExtensionAPI) {
 			clearVisibleScreen();
 		}
 
+		const wasActive = active;
 		applyUi(ctx);
+		if (wasActive) refreshHeader(ctx);
 
 		refreshInteractiveState(ctx, true);
 	});
 
 	pi.on("session_shutdown", async (_event, ctx) => {
 		sessionLifecycle.shutdown();
-		stopWorkingTimer();
+		stopWorkingDisplay(ctx);
 		if (active) {
 			uninstallUi(ctx);
 		}
 		lastCtx = undefined;
 	});
 
-	pi.on("agent_start", (event, _ctx) => {
+	pi.on("agent_start", (event, ctx) => {
 		turnTelemetry.handle(event);
 		if (!sessionLifecycle.isCurrent()) return;
-		state.workingSince = Date.now();
-		state.lastDoneIn = undefined;
-		startWorkingTimer();
+		startWorkingDisplay(ctx);
 	});
 
-	pi.on("agent_end", (_event, _ctx) => {
+	pi.on("agent_end", (_event, ctx) => {
 		if (!sessionLifecycle.isCurrent()) return;
-		stopWorkingTimer();
-		if (state.workingSince !== undefined) {
-			state.lastDoneIn = Date.now() - state.workingSince;
-			state.workingSince = undefined;
-		}
+		stopWorkingDisplay(ctx);
 		requestFooterRender?.();
 	});
 

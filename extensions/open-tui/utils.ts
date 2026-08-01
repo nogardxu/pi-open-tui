@@ -52,6 +52,12 @@ export function fmtTokens(n: number): string {
 	return `${Math.round(n / 1_000_000)}M`;
 }
 
+export function formatContextWindow(n: number): string {
+	if (n < 1000) return n.toString();
+	if (n < 1_000_000) return `${Math.round(n / 1000)}k`;
+	return `${(n / 1_000_000).toFixed(2).replace(/\.0+$/, "").replace(/(\.\d*[1-9])0+$/, "$1")}M`;
+}
+
 export function formatDuration(ms: number): string {
 	const totalSeconds = Math.max(0, Math.floor(ms / 1000));
 	if (totalSeconds < 60) return `${totalSeconds}s`;
@@ -98,18 +104,20 @@ export type PrioritizedSegment = {
 /**
  * Pack segments into maxWidth, shrinking/dropping lowest-priority segments first.
  * Higher priority = survives longer. Returns the surviving segment texts in
- * original order, space-joined. Each segment is either kept whole, truncated
- * with ellipsis, or dropped entirely.
+ * original order, joined with the supplied separator. Each segment is either
+ * kept whole, truncated with ellipsis, or dropped entirely.
  */
 export function fitSegmentsByPriority(
 	segs: readonly PrioritizedSegment[],
 	maxW: number,
 	ellipsis = "...",
+	separator = " ",
 ): string[] {
 	const items = segs.map((s) => ({ text: s.text, priority: s.priority, w: visibleWidth(s.text) }));
+	const separatorW = visibleWidth(separator);
 	const totalW = () => {
 		const active = items.filter((it) => it.text !== "");
-		return active.reduce((a, it) => a + it.w, 0) + Math.max(0, active.length - 1);
+		return active.reduce((a, it) => a + it.w, 0) + Math.max(0, active.length - 1) * separatorW;
 	};
 	while (totalW() > maxW) {
 		let target = -1;
@@ -120,8 +128,8 @@ export function fitSegmentsByPriority(
 		}
 		if (target === -1) break;
 		const others = items.filter((_, i) => i !== target && items[i].text !== "");
-		const otherW = others.reduce((a, it) => a + it.w, 0) + Math.max(0, others.length - 1);
-		const avail = maxW - otherW - (others.length > 0 ? 1 : 0);
+		const otherW = others.reduce((a, it) => a + it.w, 0) + Math.max(0, others.length - 1) * separatorW;
+		const avail = maxW - otherW - (others.length > 0 ? separatorW : 0);
 		if (avail <= visibleWidth(ellipsis)) {
 			items[target].text = "";
 			items[target].w = 0;

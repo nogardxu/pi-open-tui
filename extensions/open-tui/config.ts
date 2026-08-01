@@ -4,6 +4,7 @@ import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import type { IconMode } from "./icons.ts";
 
 export type SettingsLanguage = "en" | "zh";
+export type FooterSeparator = "dot" | "pipe" | "slash" | "arrow";
 
 export type { IconMode } from "./icons.ts";
 
@@ -35,6 +36,9 @@ export interface OpenTuiConfig {
 	icons: {
 		mode: IconMode;
 	};
+	footer: {
+		separator: FooterSeparator;
+	};
 	footerSegments: FooterSegments;
 	telemetry: TelemetryConfig;
 }
@@ -44,6 +48,9 @@ export const DEFAULT_CONFIG: OpenTuiConfig = {
 	settingsLanguage: "en",
 	icons: {
 		mode: "auto",
+	},
+	footer: {
+		separator: "dot",
 	},
 	footerSegments: {
 		cwd: true,
@@ -119,6 +126,9 @@ export function loadConfig(notify?: (msg: string, level: "warning" | "info") => 
 		const config = deepMerge(DEFAULT_CONFIG, parsed);
 		if (config.settingsLanguage !== "en" && config.settingsLanguage !== "zh") {
 			config.settingsLanguage = DEFAULT_CONFIG.settingsLanguage;
+		}
+		if (!["dot", "pipe", "slash", "arrow"].includes(config.footer.separator)) {
+			config.footer.separator = DEFAULT_CONFIG.footer.separator;
 		}
 		return config;
 	} catch (err) {

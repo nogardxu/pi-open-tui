@@ -148,6 +148,18 @@ test("configures the extension status line with Space", async () => {
 	assert.match(selectedLine(settings.component), /Extension status line/);
 });
 
+test("cycles the footer separator from the Footer tab", async () => {
+	const settings = await openSettings();
+	settings.component.handleInput("\x1b[C");
+	settings.component.handleInput("\x1b[C");
+	for (let i = 0; i < 9; i++) settings.component.handleInput("\x1b[B");
+	assert.match(selectedLine(settings.component), /Footer separator/);
+
+	settings.component.handleInput(" ");
+	assert.equal(settings.getConfig().footer.separator, "pipe");
+	assert.match(selectedLine(settings.component), /Pipe/);
+});
+
 test("keeps localized settings and values within narrow widths", async () => {
 	const config = structuredClone(DEFAULT_CONFIG);
 	config.settingsLanguage = "zh";

@@ -7,11 +7,11 @@ A polished TUI for [Pi](https://pi.dev) coding agent. Combines the best of pi-ha
 ## What's in it
 
 - **Animated Pi logo header** — 16-frame color-changing logo animation + "Let's build something great" tagline
-- **Starship-style footer** — 2 lines showing cwd, git branch/status, runtime version, context bar, model, token counts, and cost
+- **Single-line Starship-style footer** — left-aligned cwd, model, thinking level, git branch/status, and runtime; right-aligned context percentage/window, token counts, cache rate, cost, and clock
 - **Rounded editor** — accent rail + borderMuted rounded corners, clean visual frame
 - **60+ runtime detection** — Node, Rust, Go, Python, Ruby, Java, Swift, Kotlin, C/C++, Deno, Bun, and many more
 - **Git status** — branch, ahead/behind, modified/untracked/staged/stashed, detached HEAD commit hash + tag
-- **Working timer** — live elapsed time while the agent is working, done duration when finished
+- **Live clock** — current local time in the footer, refreshed once per second
 - **Turn telemetry** — generation speed, TTFT, stalls, tokens, and list-price rate after each complete agent run
 - **Zero prototype patches** — uses public Pi APIs (setHeader/setFooter/setEditorComponent), safe across Pi updates
 - **Interactive settings UI** — `/open-tui` opens a tabbed settings dialog (General / Icons / Footer / Telemetry)
@@ -39,6 +39,9 @@ Run `/open-tui` to open the interactive settings UI. Configuration is stored at 
   "icons": {
     "mode": "auto"
   },
+  "footer": {
+    "separator": "dot"
+  },
   "footerSegments": {
     "cwd": true,
     "gitBranch": true,
@@ -64,8 +67,9 @@ Run `/open-tui` to open the interactive settings UI. Configuration is stored at 
 
 - `settingsLanguage`: language for the `/open-tui` settings UI only; `en` or `zh`
 - `icons.mode`: `auto` (detect Nerd Font), `nerd` (force Nerd Font glyphs), or `ascii` (plain fallbacks)
+- `footer.separator`: `dot`, `pipe`, `slash`, or `arrow`; controls separators between segments on each side of the single-line footer
 - `footerSegments.gitCommit`: shows short hash + tag on detached HEAD (off by default)
-- `footerSegments.extensionStatuses`: shows statuses published by extensions through Pi's `setStatus()` API (on by default); turn it off to hide the whole status line, including MCP
+- `footerSegments.extensionStatuses`: shows statuses published by extensions through Pi's `setStatus()` API inline on the left side (on by default); turn it off to hide them
 
 ## Turn telemetry
 

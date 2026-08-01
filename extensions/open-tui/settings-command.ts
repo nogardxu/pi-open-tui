@@ -8,7 +8,7 @@ import {
 	type TUI,
 	Text,
 } from "@earendil-works/pi-tui";
-import type { IconMode, OpenTuiConfig, SettingsLanguage } from "./config.ts";
+import type { FooterSeparator, IconMode, OpenTuiConfig, SettingsLanguage } from "./config.ts";
 
 interface SettingItem {
 	id: string;
@@ -29,6 +29,7 @@ const COPY = {
 			enabled: "Enabled",
 			language: "Language",
 			iconMode: "Icon mode",
+			separator: "Footer separator",
 			cwd: "CWD",
 			gitBranch: "Git branch",
 			gitStatus: "Git status",
@@ -48,6 +49,7 @@ const COPY = {
 			off: "Off",
 			languages: { en: "English", zh: "简体中文" },
 			icons: { auto: "Auto", nerd: "Nerd", ascii: "ASCII" },
+			separators: { dot: "Dot", pipe: "Pipe", slash: "Slash", arrow: "Arrow" },
 		},
 	},
 	zh: {
@@ -58,6 +60,7 @@ const COPY = {
 			enabled: "启用",
 			language: "语言",
 			iconMode: "图标模式",
+			separator: "Footer 分隔符",
 			cwd: "当前目录",
 			gitBranch: "Git 分支",
 			gitStatus: "Git 状态",
@@ -77,6 +80,7 @@ const COPY = {
 			off: "关闭",
 			languages: { en: "English", zh: "简体中文" },
 			icons: { auto: "自动", nerd: "Nerd", ascii: "ASCII" },
+			separators: { dot: "点号", pipe: "竖线", slash: "斜线", arrow: "箭头" },
 		},
 	},
 } as const;
@@ -98,6 +102,13 @@ function cycleIconMode(config: OpenTuiConfig): OpenTuiConfig {
 	const currentIdx = order.indexOf(config.icons.mode);
 	const next = order[(currentIdx + 1) % order.length]!;
 	return { ...config, icons: { mode: next } };
+}
+
+function cycleFooterSeparator(config: OpenTuiConfig): OpenTuiConfig {
+	const order: FooterSeparator[] = ["dot", "pipe", "slash", "arrow"];
+	const currentIdx = order.indexOf(config.footer.separator);
+	const next = order[(currentIdx + 1) % order.length]!;
+	return { ...config, footer: { separator: next } };
 }
 
 function toggleEnabled(config: OpenTuiConfig): OpenTuiConfig {
@@ -139,6 +150,7 @@ function buildSegmentsItems(config: OpenTuiConfig, copy: SettingsCopy): SettingI
 		{ id: "tokens", label: copy.labels.tokens, currentValue: flag(segs.tokens) },
 		{ id: "cost", label: copy.labels.cost, currentValue: flag(segs.cost) },
 		{ id: "extensionStatuses", label: copy.labels.extensionStatuses, currentValue: flag(segs.extensionStatuses) },
+		{ id: "separator", label: copy.labels.separator, currentValue: copy.values.separators[config.footer.separator] },
 	];
 }
 
@@ -176,6 +188,7 @@ function handleSettingChange(
 		if (itemId === "settingsLanguage") return toggleLanguage(config);
 	}
 	if (tab === "icons" && itemId === "mode") return cycleIconMode(config);
+	if (tab === "segments" && itemId === "separator") return cycleFooterSeparator(config);
 	if (tab === "segments") {
 		return toggleSetting(config, itemId as keyof OpenTuiConfig["footerSegments"]);
 	}

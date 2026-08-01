@@ -29,18 +29,18 @@ export interface IconGlyphs {
 }
 
 const NERD_GLYPHS: IconGlyphs = {
-	cwd: "",
+	cwd: "",
 	git: "",
 	working: "",
 	done: "",
 	context: "",
-	model: "",
+	model: "",
 	thinking: "",
 	// client network view: input = upload to API, output = download from API
 	input: "",
 	output: "",
 	cacheHit: "",
-	cost: "",
+	cost: "",
 	speed: "󰓅",
 	latency: "",
 	stall: "",

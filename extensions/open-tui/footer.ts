@@ -1,8 +1,8 @@
 import type { ExtensionContext, Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
-import { truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
-import type { OpenTuiConfig } from "./config.ts";
+import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import type { FooterSeparator, OpenTuiConfig } from "./config.ts";
 import type { IconGlyphs } from "./icons.ts";
-import { resolveGlyphs, resolveIconMode, runtimeSymbol } from "./icons.ts";
+import { resolveGlyphs, runtimeSymbol } from "./icons.ts";
 import type { GitStatus } from "./git.ts";
 import type { RuntimeInfo } from "./runtime.ts";
 import {
@@ -11,10 +11,8 @@ import {
 	effortColor,
 	fitSegmentsByPriority,
 	fmtTokens,
+	formatContextWindow,
 	formatCwd,
-	formatDuration,
-	formatProviderLabel,
-	providerColor,
 	sanitizeStatus,
 	stressColor,
 	truncatePath,
@@ -22,72 +20,52 @@ import {
 import type { FooterState, ModelMeta, UsageTotals } from "./state.ts";
 import { getUsageTotals } from "./state.ts";
 
-function renderBar(theme: Theme, pct: number, barWidth: number, ascii: boolean): string {
-	const filled = Math.max(0, Math.min(barWidth, Math.round((pct / 100) * barWidth)));
-	const empty = barWidth - filled;
-	const color = stressColor(pct);
-	const filledCell = ascii ? "#" : "█";
-	const emptyCell = ascii ? "-" : "░";
-	return (
-		theme.fg("dim", "[") +
-		theme.fg(color, filledCell.repeat(filled)) +
-		theme.fg("dim", emptyCell.repeat(empty)) +
-		theme.fg("dim", "]")
-	);
-}
-
-function renderGitSegment(
+function renderGitBranchSegment(
 	theme: Theme,
 	git: GitStatus,
 	glyphs: IconGlyphs,
 	segments: OpenTuiConfig["footerSegments"],
 	maxBranchLen = 20,
 ): string {
-	const parts: string[] = [];
-	if (segments.gitBranch) {
-		if (git.branch) {
-			parts.push(theme.fg("mdLink", glyphs.git));
-			parts.push(theme.fg("mdLink", truncatePath(git.branch, maxBranchLen)));
-		} else if (git.commit?.detached) {
-			parts.push(theme.fg("warning", glyphs.git));
-			parts.push(theme.fg("warning", "HEAD"));
-			if (git.commit.oid) {
-				const shortHash = git.commit.oid.slice(0, 7);
-				const tag = git.commit.tag ? ` ${git.commit.tag}` : "";
-				parts.push(theme.fg("dim", `${shortHash}${tag}`));
-			}
-		}
+	if (!segments.gitBranch) return "";
+	if (git.branch) {
+		return `${theme.fg("mdLink", glyphs.git)} ${theme.fg("mdLink", truncatePath(git.branch, maxBranchLen))}`;
 	}
+	if (!git.commit?.detached) return "";
+	const hash = git.commit.oid ? ` ${theme.fg("dim", git.commit.oid.slice(0, 7))}` : "";
+	const tag = git.commit.tag ? ` ${theme.fg("dim", git.commit.tag)}` : "";
+	return `${theme.fg("warning", glyphs.git)} ${theme.fg("warning", "HEAD")}${hash}${tag}`;
+}
 
-	if (segments.gitStatus) {
-		const statusIcons: string[] = [];
-		// ponytail: always show count — `!1` not `!`, so 1 vs 100 is distinguishable.
-		const addStatus = (count: number, glyph: string, color: ThemeColor) => {
-			if (count > 0) statusIcons.push(theme.fg(color, `${glyph}${count}`));
-		};
-		addStatus(git.conflicted, glyphs.conflicted, "error");
-		addStatus(git.deleted, glyphs.deleted, "error");
-		addStatus(git.modified, glyphs.modified, "warning");
-		addStatus(git.renamed, glyphs.renamed, "warning");
-		addStatus(git.staged, glyphs.staged, "success");
-		addStatus(git.untracked, glyphs.untracked, "muted");
-		addStatus(git.stashed, glyphs.stashed, "muted");
-
-		if (git.ahead > 0 && git.behind > 0) {
-			statusIcons.push(theme.fg("warning", `${glyphs.diverged}${git.ahead}/${git.behind}`));
-		} else if (git.ahead > 0) {
-			statusIcons.push(theme.fg("success", `${glyphs.ahead}${git.ahead}`));
-		} else if (git.behind > 0) {
-			statusIcons.push(theme.fg("warning", `${glyphs.behind}${git.behind}`));
-		}
-
-		const statusBlock = statusIcons.join(" ");
-		if (statusBlock) {
-			parts.push(`${theme.fg("dim", "[")}${statusBlock}${theme.fg("dim", "]")}`);
-		}
+function renderGitStatusSegment(
+	theme: Theme,
+	git: GitStatus,
+	glyphs: IconGlyphs,
+	segments: OpenTuiConfig["footerSegments"],
+): string {
+	if (!segments.gitStatus) return "";
+	const statusIcons: string[] = [];
+	// Always show counts so !1 and !100 remain distinguishable.
+	const addStatus = (count: number, glyph: string, color: ThemeColor) => {
+		if (count > 0) statusIcons.push(theme.fg(color, `${glyph}${count}`));
+	};
+	addStatus(git.conflicted, glyphs.conflicted, "error");
+	addStatus(git.deleted, glyphs.deleted, "error");
+	addStatus(git.modified, glyphs.modified, "warning");
+	addStatus(git.renamed, glyphs.renamed, "warning");
+	addStatus(git.staged, glyphs.staged, "success");
+	addStatus(git.untracked, glyphs.untracked, "muted");
+	addStatus(git.stashed, glyphs.stashed, "muted");
+	if (git.ahead > 0 && git.behind > 0) {
+		statusIcons.push(theme.fg("warning", `${glyphs.diverged}${git.ahead}/${git.behind}`));
+	} else if (git.ahead > 0) {
+		statusIcons.push(theme.fg("success", `${glyphs.ahead}${git.ahead}`));
+	} else if (git.behind > 0) {
+		statusIcons.push(theme.fg("warning", `${glyphs.behind}${git.behind}`));
 	}
-
-	return parts.join(" ");
+	return statusIcons.length > 0
+		? `${theme.fg("dim", "[")}${statusIcons.join(" ")}${theme.fg("dim", "]")}`
+		: "";
 }
 
 function renderRuntimeSegment(
@@ -102,78 +80,68 @@ function renderRuntimeSegment(
 	return label;
 }
 
-function renderTimerSegment(theme: Theme, state: FooterState, glyphs: IconGlyphs): string {
-	if (state.workingSince !== undefined) {
-		return `${theme.fg("accent", glyphs.working)} ${theme.fg("dim", "working")} ${theme.fg("accent", formatDuration(Date.now() - state.workingSince))}`;
-	}
-	if (state.lastDoneIn !== undefined) {
-		return `${theme.fg("success", glyphs.done)} ${theme.fg("success", "done")} ${theme.fg("text", formatDuration(state.lastDoneIn))}`;
-	}
-	return "";
-}
-
-function renderContextBar(
+function renderContextSegment(
 	theme: Theme,
 	ctx: ExtensionContext,
-	width: number,
 	glyphs: IconGlyphs,
-	iconMode: OpenTuiConfig["icons"]["mode"],
 ): string {
 	const contextUsage = ctx.getContextUsage();
 	const contextWindow = contextUsage?.contextWindow ?? ctx.model?.contextWindow ?? 0;
-	const contextTokens = contextUsage?.tokens ?? 0;
-	const contextPct = contextUsage?.percent ?? 0;
-
-	// ponytail: render 0% bar once we know the window — keeps the right side
-	// populated instead of collapsing everything left in an empty session.
 	if (contextWindow <= 0) return "";
-
+	const contextPct = contextUsage?.percent ?? 0;
 	const pctText = theme.fg(stressColor(contextPct), `${contextPct.toFixed(1)}%`);
-	const ctxText = `${theme.fg("text", fmtTokens(contextTokens))}${theme.fg("dim", "/")}${theme.fg("text", fmtTokens(contextWindow))}`;
-	const contextIcon = theme.fg(stressColor(contextPct), glyphs.context);
-	const reserved = visibleWidth(contextIcon) + visibleWidth(pctText) + visibleWidth(ctxText) + 5 + 2;
-	const barWidth = Math.max(4, Math.min(12, width - reserved));
-	return `${contextIcon} ${renderBar(theme, contextPct, barWidth, resolveIconMode(iconMode) === "ascii")} ${pctText} ${theme.fg("dim", "·")} ${ctxText}`;
+	const windowText = theme.fg("text", formatContextWindow(contextWindow));
+	return `${theme.fg(stressColor(contextPct), glyphs.context)} ${pctText}${theme.fg("dim", "/")}${windowText}`;
 }
 
-function renderStatsBlock(
+function renderUsageSegments(
 	theme: Theme,
 	totals: UsageTotals,
 	glyphs: IconGlyphs,
 	segments: OpenTuiConfig["footerSegments"],
-): string {
+): string[] {
 	const stats: string[] = [];
 	if (segments.tokens) {
 		stats.push(theme.fg("accent", `${glyphs.input} ${fmtTokens(totals.input)}`));
 		stats.push(theme.fg("success", `${glyphs.output} ${fmtTokens(totals.output)}`));
-		// Hide the rate when the provider never reported cache tokens.
 		if (totals.cacheHitRate !== undefined) {
 			stats.push(theme.fg(cacheHitColor(totals.cacheHitRate), `${glyphs.cacheHit} ${totals.cacheHitRate.toFixed(1)}%`));
 		}
 	}
-	if (segments.cost) {
-		stats.push(theme.fg("warning", `${glyphs.cost} $${totals.cost.toFixed(3)}`));
-	}
-
-	return stats.join(` ${theme.fg("dim", "|")} `);
+	if (segments.cost) stats.push(theme.fg("warning", `${glyphs.cost} $${totals.cost.toFixed(3)}`));
+	return stats;
 }
 
-function renderExtensionStatusLines(
+function renderExtensionStatusSegment(
 	theme: Theme,
 	extensionStatuses: ReadonlyMap<string, string>,
 	glyphs: IconGlyphs,
-	width: number,
-): string[] {
+	separator: string,
+): string {
 	const statuses = Array.from(extensionStatuses.entries())
 		.sort(([a], [b]) => a.localeCompare(b))
 		.map(([, text]) => sanitizeStatus(text))
 		.filter((text) => text.length > 0);
-	if (statuses.length === 0) return [];
+	if (statuses.length === 0) return "";
+	return `${theme.fg("mdLink", glyphs.extensions)} ${statuses.map((status) => theme.fg("muted", status)).join(separator)}`;
+}
 
-	const separator = ` ${theme.fg("dim", "|")} `;
-	const statusText = statuses.map((status) => theme.fg("muted", status)).join(separator);
-	const line = `${theme.fg("mdLink", glyphs.extensions)} ${statusText}`;
-	return wrapTextWithAnsi(line, width);
+function renderClockSegment(theme: Theme, glyphs: IconGlyphs): string {
+	const now = new Date();
+	const time = [now.getHours(), now.getMinutes(), now.getSeconds()]
+		.map((part) => part.toString().padStart(2, "0"))
+		.join(":");
+	return `${theme.fg("dim", glyphs.working)} ${theme.fg("text", time)}`;
+}
+
+function separatorFor(theme: Theme, separator: FooterSeparator): string {
+	const text = {
+		dot: " · ",
+		pipe: " | ",
+		slash: " / ",
+		arrow: " → ",
+	}[separator];
+	return theme.fg("dim", text);
 }
 
 export interface FooterHooks {
@@ -194,10 +162,12 @@ export function installFooter(
 			hooks.scheduleGitRefresh();
 			tui.requestRender();
 		});
-
+		const clockTimer = setInterval(() => tui.requestRender(), 1000);
+		clockTimer.unref?.();
 		return {
 			dispose() {
 				unsubBranch();
+				clearInterval(clockTimer);
 				hooks.setRequestRender(undefined);
 			},
 			invalidate() {},
@@ -208,7 +178,7 @@ export function installFooter(
 				const glyphs = resolveGlyphs(config.icons.mode);
 				const segments = config.footerSegments;
 				const meta = getModelMeta();
-
+				const separator = separatorFor(theme, config.footer.separator);
 				const totals = getUsageTotals(ctx);
 
 				const leftParts: { text: string; priority: number }[] = [];
@@ -216,61 +186,48 @@ export function installFooter(
 					const maxCwd = Math.min(30, Math.max(10, Math.floor(width * 0.4)));
 					leftParts.push({
 						text: `${theme.fg("mdLink", glyphs.cwd)} ${theme.fg("accent", truncatePath(formatCwd(ctx.sessionManager.getCwd()), maxCwd))}`,
-						priority: 0,
+						priority: 6,
 					});
 				}
-				const gitSeg = renderGitSegment(theme, state.git, glyphs, segments);
-				if (gitSeg) leftParts.push({ text: gitSeg, priority: 3 });
+				leftParts.push({
+					text: `${theme.fg("mdLink", glyphs.model)} ${theme.fg("text", meta.model)}`,
+					priority: 6,
+				});
+				if (meta.effort && meta.effort !== "off") {
+					leftParts.push({
+						text: `${theme.fg(effortColor(meta.effort), glyphs.thinking)} ${theme.fg(effortColor(meta.effort), meta.effort)}`,
+						priority: 5,
+					});
+				}
+				const gitBranch = renderGitBranchSegment(theme, state.git, glyphs, segments);
+				if (gitBranch) leftParts.push({ text: gitBranch, priority: 4 });
+				const gitStatus = renderGitStatusSegment(theme, state.git, glyphs, segments);
+				if (gitStatus) leftParts.push({ text: gitStatus, priority: 3 });
 				if (segments.runtime) {
 					const runtimeSeg = renderRuntimeSegment(theme, state.runtime, config.icons.mode);
-					if (runtimeSeg) leftParts.push({ text: runtimeSeg, priority: 1 });
+					if (runtimeSeg) leftParts.push({ text: runtimeSeg, priority: 2 });
 				}
-				const timerSeg = renderTimerSegment(theme, state, glyphs);
-				if (timerSeg) leftParts.push({ text: timerSeg, priority: 2 });
+				if (segments.extensionStatuses) {
+					const extensionStatus = renderExtensionStatusSegment(theme, footerData.getExtensionStatuses(), glyphs, separator);
+					if (extensionStatus) leftParts.push({ text: extensionStatus, priority: 0 });
+				}
 
-				let rightBlock = "";
+				const rightParts: { text: string; priority: number }[] = [];
 				if (segments.context) {
-					rightBlock = renderContextBar(theme, ctx, width, glyphs, config.icons.mode);
+					const context = renderContextSegment(theme, ctx, glyphs);
+					if (context) rightParts.push({ text: context, priority: 6 });
 				}
+				for (const text of renderUsageSegments(theme, totals, glyphs, segments)) {
+					rightParts.push({ text, priority: 4 });
+				}
+				rightParts.push({ text: renderClockSegment(theme, glyphs), priority: 6 });
 
+				const rightBlock = fitSegmentsByPriority(rightParts, width, theme.fg("dim", "..."), separator).join(separator);
 				const rightW = visibleWidth(rightBlock);
 				const availLeft = Math.max(0, width - rightW - (rightBlock ? 1 : 0));
-				const fittedLeft = fitSegmentsByPriority(leftParts, availLeft, theme.fg("dim", "..."));
-				const line1 = alignRight(fittedLeft.join(" "), rightBlock, width, theme);
-
-				const modelParts: string[] = [];
-				modelParts.push(theme.fg("mdLink", glyphs.model));
-				if (meta.provider && meta.provider !== "Unknown") {
-					modelParts.push(theme.fg(providerColor(ctx.model?.provider ?? "none"), meta.provider));
-				}
-				modelParts.push(theme.fg("text", meta.model));
-				if (meta.effort && meta.effort !== "off") {
-					modelParts.push(theme.fg(effortColor(meta.effort), `${glyphs.thinking} ${meta.effort}`));
-				}
-				const modelBlock = modelParts.join(theme.fg("dim", " · "));
-
-				const statsBlock = renderStatsBlock(
-					theme,
-					totals,
-					glyphs,
-					segments,
-				);
-
-				const line2 = alignRight(modelBlock, statsBlock, width, theme);
-
-				const mainLines = [line1, line2]
-					.map((line) => truncateToWidth(line, width, theme.fg("dim", "...")));
-				return segments.extensionStatuses
-					? [
-						...mainLines,
-						...renderExtensionStatusLines(
-							theme,
-							footerData.getExtensionStatuses(),
-							glyphs,
-							width,
-						),
-					]
-					: mainLines;
+				const fittedLeft = fitSegmentsByPriority(leftParts, availLeft, theme.fg("dim", "..."), separator).join(separator);
+				const line = alignRight(fittedLeft, rightBlock, width, theme);
+				return [truncateToWidth(line, width, theme.fg("dim", "..."))];
 			},
 		};
 	});

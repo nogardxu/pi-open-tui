@@ -5,7 +5,7 @@ import type {
 	ReadonlyFooterDataProvider,
 	Theme,
 } from "@earendil-works/pi-coding-agent";
-import type { Component, TUI } from "@earendil-works/pi-tui";
+import { visibleWidth, type Component, type TUI } from "@earendil-works/pi-tui";
 import { DEFAULT_CONFIG } from "../extensions/open-tui/config.ts";
 import { installFooter } from "../extensions/open-tui/footer.ts";
 import { emptyGitStatus } from "../extensions/open-tui/git.ts";
@@ -83,16 +83,13 @@ test("ASCII footer renders icons as semantic labels", () => {
 			getCwd: () => "C:\\work\\project",
 			getEntries: () => entries,
 		},
-		getContextUsage: () => ({ tokens: 250, contextWindow: 1_000, percent: 25 }),
+		getContextUsage: () => ({ tokens: 250, contextWindow: 1_110_000, percent: 1.7 }),
 	} as unknown as ExtensionContext;
 	const config = structuredClone(DEFAULT_CONFIG);
 	config.icons.mode = "ascii";
 	const state: FooterState = {
 		git: { ...emptyGitStatus(), branch: "main", modified: 2 },
 		runtime: { name: "nodejs", version: "24.6.0" },
-		sessionStartEpoch: Date.now(),
-		workingSince: Date.now() - 2_000,
-		lastDoneIn: undefined,
 	};
 
 	installFooter(
@@ -121,13 +118,12 @@ test("ASCII footer renders icons as semantic labels", () => {
 
 	for (const expected of [
 		"@",
+		"M gpt-5",
+		"~ high",
 		"* main",
 		"!2",
 		"node 24.6.0",
-		"o working",
-		"%",
-		"M",
-		"~ high",
+		"% 1.7%/1.11M",
 		"↑ 200",
 		"↓ 80",
 		"c 33.3%",
@@ -136,11 +132,23 @@ test("ASCII footer renders icons as semantic labels", () => {
 	]) {
 		assert.ok(output.includes(expected), `missing ${expected}\n${output}`);
 	}
+	assert.equal(output.split("\n").length, 1);
+	assert.doesNotMatch(output, /OpenAI/);
 	assert.equal(extensionStatusReads, 1);
 
 	config.footerSegments.extensionStatuses = false;
 	const hiddenOutput = component.render(160);
-	assert.equal(hiddenOutput.length, 2);
+	assert.equal(hiddenOutput.length, 1);
 	assert.doesNotMatch(hiddenOutput.join("\n"), /goal active/);
 	assert.equal(extensionStatusReads, 1);
+
+	config.footer.separator = "pipe";
+	const pipeOutput = component.render(160)[0]!;
+	assert.match(pipeOutput, / \| /);
+
+	for (const width of [40, 80, 160]) {
+		const lines = component.render(width);
+		assert.equal(lines.length, 1);
+		assert.ok(visibleWidth(lines[0]!) <= width, `${visibleWidth(lines[0]!)} > ${width}`);
+	}
 });
