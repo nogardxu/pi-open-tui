@@ -15,8 +15,8 @@ const theme = {
 	fg: (_color: string, text: string) => text,
 } as Theme;
 
-function makeMessage(output = 20, input = 50): AssistantMessage {
-	const totalTokens = input + output;
+function makeMessage(output = 20, input = 50, cacheRead = 0, cacheWrite = 0): AssistantMessage {
+	const totalTokens = input + output + cacheRead + cacheWrite;
 	return {
 		role: "assistant",
 		content: [{ type: "text", text: "response" }],
@@ -26,8 +26,8 @@ function makeMessage(output = 20, input = 50): AssistantMessage {
 		usage: {
 			input,
 			output,
-			cacheRead: 0,
-			cacheWrite: 0,
+			cacheRead,
+			cacheWrite,
 			totalTokens,
 			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: totalTokens * 0.000004 },
 		},
@@ -80,6 +80,9 @@ test("uses total output over full generation time", () => {
 		totalMs: 5_000,
 		inputTokens: 50,
 		outputTokens: 20,
+		cacheReadTokens: 0,
+		cacheWriteTokens: 0,
+		cacheHitRate: undefined,
 		stallMs: 0,
 		stallCount: 0,
 		rateUsdPerMTokens: 4,
@@ -92,6 +95,33 @@ test("uses total output over full generation time", () => {
 		formatTurnTelemetry(telemetry!, theme, DEFAULT_CONFIG.telemetry, "ascii"),
 		"> TPS 4.0 tok/s | ~ TTFT 4.0s | + 5.0s | ↑ 50 | ↓ 20 | $ $4.00/M",
 	);
+});
+
+test("reports accumulated cache hit rate for a complete agent run", () => {
+	let now = 0;
+	const tracker = new TurnTelemetryTracker(() => now);
+	const first = makeMessage(20, 50, 100, 10);
+	const second = makeMessage(10, 30, 20, 0);
+
+	tracker.handle({ type: "agent_start" });
+	startTurn(tracker, first);
+	now = 100;
+	tracker.handle(update(first));
+	now = 200;
+	endTurn(tracker, first);
+
+	startTurn(tracker, second, 1);
+	now = 300;
+	tracker.handle(update(second));
+	now = 400;
+	endTurn(tracker, second, 1);
+
+	const telemetry = tracker.handle({ type: "agent_settled" });
+
+	assert.equal(telemetry?.cacheReadTokens, 120);
+	assert.equal(telemetry?.cacheWriteTokens, 10);
+	assert.equal(telemetry?.cacheHitRate, (120 / 210) * 100);
+	assert.match(formatTurnTelemetry(telemetry!, theme, DEFAULT_CONFIG.telemetry, "ascii"), /c 57\.1%/);
 });
 
 test("measures non-streamed responses from turn start", () => {
@@ -125,6 +155,9 @@ test("uses footer semantics and respects telemetry segment settings", () => {
 		totalMs: 900,
 		inputTokens: 50,
 		outputTokens: 20,
+		cacheReadTokens: 0,
+		cacheWriteTokens: 0,
+		cacheHitRate: undefined,
 		stallMs: 800,
 		stallCount: 1,
 		rateUsdPerMTokens: 4,

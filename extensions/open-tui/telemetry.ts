@@ -11,7 +11,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import type { IconMode, TelemetryConfig } from "./config.ts";
 import { resolveGlyphs } from "./icons.ts";
-import { fmtTokens, formatDuration } from "./utils.ts";
+import { cacheHitColor, fmtTokens, formatDuration } from "./utils.ts";
 
 const STALL_THRESHOLD_MS = 1000;
 
@@ -49,6 +49,9 @@ export interface TurnTelemetry {
 	totalMs: number;
 	inputTokens: number;
 	outputTokens: number;
+	cacheReadTokens: number;
+	cacheWriteTokens: number;
+	cacheHitRate: number | undefined;
 	stallMs: number;
 	stallCount: number;
 	rateUsdPerMTokens: number | null;
@@ -65,6 +68,12 @@ function isAssistantMessage(message: AgentMessage): message is AssistantMessage 
 function round(value: number, decimals: number): number {
 	const factor = 10 ** decimals;
 	return Math.round(value * factor) / factor;
+}
+
+function getCacheHitRate(inputTokens: number, cacheReadTokens: number, cacheWriteTokens: number): number | undefined {
+	const promptTokens = inputTokens + cacheReadTokens + cacheWriteTokens;
+	if ((cacheReadTokens <= 0 && cacheWriteTokens <= 0) || promptTokens <= 0) return undefined;
+	return (cacheReadTokens / promptTokens) * 100;
 }
 
 export class TurnTelemetryTracker {
@@ -190,15 +199,19 @@ export class TurnTelemetryTracker {
 		const endMs = this.now();
 		let inputTokens = 0;
 		let outputTokens = 0;
+		let cacheReadTokens = 0;
+		let cacheWriteTokens = 0;
 		let totalTokens = 0;
 		let costUsd = 0;
 		for (const message of turn.messages) {
 			inputTokens += message.usage.input;
 			outputTokens += message.usage.output;
+			cacheReadTokens += message.usage.cacheRead;
+			cacheWriteTokens += message.usage.cacheWrite;
 			totalTokens += message.usage.totalTokens;
 			costUsd += message.usage.cost.total;
 		}
-		if (![inputTokens, outputTokens, totalTokens, costUsd].every(Number.isFinite)) {
+		if (![inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, totalTokens, costUsd].every(Number.isFinite)) {
 			throw new Error("Invalid assistant usage in turn telemetry");
 		}
 
@@ -214,6 +227,9 @@ export class TurnTelemetryTracker {
 			totalMs: endMs - turn.startMs,
 			inputTokens,
 			outputTokens,
+			cacheReadTokens,
+			cacheWriteTokens,
+			cacheHitRate: getCacheHitRate(inputTokens, cacheReadTokens, cacheWriteTokens),
 			stallMs: turn.stallMs,
 			stallCount: turn.stallCount,
 			rateUsdPerMTokens: validCost && validTokens
@@ -235,6 +251,8 @@ export class TurnTelemetryTracker {
 
 		const outputTokens = turns.reduce((sum, turn) => sum + turn.outputTokens, 0);
 		const inputTokens = turns.reduce((sum, turn) => sum + turn.inputTokens, 0);
+		const cacheReadTokens = turns.reduce((sum, turn) => sum + turn.cacheReadTokens, 0);
+		const cacheWriteTokens = turns.reduce((sum, turn) => sum + turn.cacheWriteTokens, 0);
 		const totalTokens = turns.reduce((sum, turn) => sum + turn.totalTokens, 0);
 		const costUsd = turns.reduce((sum, turn) => sum + turn.costUsd, 0);
 		const stallMs = turns.reduce((sum, turn) => sum + turn.stallMs, 0);
@@ -251,6 +269,9 @@ export class TurnTelemetryTracker {
 			totalMs: this.now() - startMs,
 			inputTokens,
 			outputTokens,
+			cacheReadTokens,
+			cacheWriteTokens,
+			cacheHitRate: getCacheHitRate(inputTokens, cacheReadTokens, cacheWriteTokens),
 			stallMs,
 			stallCount,
 			rateUsdPerMTokens: validRate ? round(costUsd / (totalTokens / 1_000_000), 2) : null,
@@ -287,6 +308,9 @@ export function formatTurnTelemetry(
 	if (config.tokens) {
 		parts.push(theme.fg("accent", `${glyphs.input} ${fmtTokens(telemetry.inputTokens)}`));
 		parts.push(theme.fg("success", `${glyphs.output} ${fmtTokens(telemetry.outputTokens)}`));
+		if (telemetry.cacheHitRate !== undefined) {
+			parts.push(theme.fg(cacheHitColor(telemetry.cacheHitRate), `${glyphs.cacheHit} ${telemetry.cacheHitRate.toFixed(1)}%`));
+		}
 	}
 	if (config.stalls && telemetry.stallMs > 0) {
 		parts.push(theme.fg("warning", `${glyphs.stall} stall ${telemetry.stallCount}x / ${formatTurnDuration(telemetry.stallMs)}`));

@@ -57,6 +57,20 @@ test("ASCII footer renders icons as semantic labels", () => {
 				cost: { total: 0.125 },
 			},
 		},
+	}, {
+		id: "usage-2",
+		timestamp: Date.now() + 1,
+		type: "message",
+		message: {
+			role: "assistant",
+			usage: {
+				input: 100,
+				output: 40,
+				cacheRead: 0,
+				cacheWrite: 0,
+				cost: { total: 0.125 },
+			},
+		},
 	}];
 	const ctx = {
 		model: { provider: "openai", contextWindow: 1_000 },
@@ -114,10 +128,10 @@ test("ASCII footer renders icons as semantic labels", () => {
 		"%",
 		"M",
 		"~ high",
-		"↑ 100",
-		"↓ 40",
-		"c 50.0%",
-		"$ $0.125",
+		"↑ 200",
+		"↓ 80",
+		"c 33.3%",
+		"$ $0.250",
 		"& goal active",
 	]) {
 		assert.ok(output.includes(expected), `missing ${expected}\n${output}`);

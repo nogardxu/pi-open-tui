@@ -19,7 +19,7 @@ export interface UsageTotals {
 	cacheRead: number;
 	cacheWrite: number;
 	cost: number;
-	latestCacheHitRate: number | undefined;
+	cacheHitRate: number | undefined;
 }
 
 let usageCache: { key: string; totals: UsageTotals } | undefined;
@@ -36,7 +36,7 @@ export function getUsageTotals(ctx: ExtensionContext): UsageTotals {
 
 	const totals: UsageTotals = {
 		input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0,
-		latestCacheHitRate: undefined,
+		cacheHitRate: undefined,
 	};
 	for (const entry of ctx.sessionManager.getEntries()) {
 		if (entry.type === "message" && entry.message?.role === "assistant") {
@@ -48,11 +48,11 @@ export function getUsageTotals(ctx: ExtensionContext): UsageTotals {
 			totals.cacheRead += u.cacheRead ?? 0;
 			totals.cacheWrite += u.cacheWrite ?? 0;
 			totals.cost += u.cost?.total ?? 0;
-			const promptTokens = (u.input ?? 0) + (u.cacheRead ?? 0) + (u.cacheWrite ?? 0);
-			if (promptTokens > 0) {
-				totals.latestCacheHitRate = ((u.cacheRead ?? 0) / promptTokens) * 100;
-			}
 		}
+	}
+	const promptTokens = totals.input + totals.cacheRead + totals.cacheWrite;
+	if ((totals.cacheRead > 0 || totals.cacheWrite > 0) && promptTokens > 0) {
+		totals.cacheHitRate = (totals.cacheRead / promptTokens) * 100;
 	}
 	usageCache = { key, totals };
 	return totals;
