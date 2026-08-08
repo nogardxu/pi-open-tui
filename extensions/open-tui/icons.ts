@@ -28,6 +28,19 @@ export interface IconGlyphs {
 	deleted: string;
 }
 
+export interface ToolGlyphs {
+	command: string;
+	read: string;
+	edit: string;
+	write: string;
+	search: string;
+	find: string;
+	list: string;
+	pending: string;
+	success: string;
+	error: string;
+}
+
 const NERD_GLYPHS: IconGlyphs = {
 	cwd: "",
 	git: "",
@@ -88,6 +101,32 @@ const ASCII_GLYPHS: IconGlyphs = {
 	deleted: "x",
 };
 
+const NERD_TOOL_GLYPHS: ToolGlyphs = {
+	command: "",
+	read: "󰈙",
+	edit: "",
+	write: "✎",
+	search: "",
+	find: "󰱼",
+	list: "",
+	pending: "",
+	success: "",
+	error: "✘",
+};
+
+const ASCII_TOOL_GLYPHS: ToolGlyphs = {
+	command: "$",
+	read: "+",
+	edit: "+",
+	write: "+",
+	search: "+",
+	find: "+",
+	list: "+",
+	pending: ".",
+	success: "+",
+	error: "x",
+};
+
 const NERD_FONT_TERMINALS = new Set([
 	"iTerm.app",
 	"Ghostty",
@@ -126,6 +165,11 @@ export function resolveIconMode(mode: IconMode): "nerd" | "ascii" {
 export function resolveGlyphs(mode: IconMode): IconGlyphs {
 	const resolved = resolveIconMode(mode);
 	return resolved === "nerd" ? NERD_GLYPHS : ASCII_GLYPHS;
+}
+
+export function resolveToolGlyphs(mode: IconMode): ToolGlyphs {
+	const resolved = resolveIconMode(mode);
+	return resolved === "nerd" ? NERD_TOOL_GLYPHS : ASCII_TOOL_GLYPHS;
 }
 
 const RUNTIME_SYMBOLS: Record<string, string> = {

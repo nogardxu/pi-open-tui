@@ -15,6 +15,8 @@ import {
 	invalidateUsageCache,
 	type FooterState,
 } from "./state.ts";
+import { installToolRenderers } from "./tool-renderers.ts";
+import { resolveToolGlyphs } from "./icons.ts";
 
 function isInteractiveLaunch(): boolean {
 	if (!process.stdout.isTTY) return false;
@@ -43,11 +45,14 @@ function isTuiContext(ctx: ExtensionContext): boolean {
 }
 
 export default function (pi: ExtensionAPI) {
+	let config: OpenTuiConfig = structuredClone(DEFAULT_CONFIG);
+	if (typeof pi.registerTool === "function") {
+		installToolRenderers(pi, process.cwd(), () => resolveToolGlyphs(config.icons.mode));
+	}
 	const sessionLifecycle = new SessionLifecycle();
 	const state: FooterState = createInitialState();
 	const turnTelemetry = new TurnTelemetryTracker();
 
-	let config: OpenTuiConfig = structuredClone(DEFAULT_CONFIG);
 	let active = false;
 	let lastCtx: ExtensionContext | undefined;
 	let requestFooterRender: (() => void) | undefined;
