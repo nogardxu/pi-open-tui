@@ -1,11 +1,15 @@
 {
-  "name": "pi-open-tui",
-  "version": "0.2.10",
-  "description": "A polished TUI for Pi coding agent: animated logo header, Starship-style footer, rounded editor with model metadata, and prompt-box user messages. Combines the best of pi-haiku, pi-claude-code-tui, and pi-zentui.",
+  "name": "@nogardxu/pi-open-tui",
+  "version": "0.1.0",
+  "description": "A customized fork of pi-open-tui for personal use. A polished TUI for Pi coding agent with an animated logo header, Starship-style footer, rounded editor, model metadata, and prompt-box user messages.",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/OldSuns/pi-open-tui.git"
+    "url": "git+https://github.com/nogardxu/pi-open-tui.git"
+  },
+  "homepage": "https://github.com/nogardxu/pi-open-tui#readme",
+  "bugs": {
+    "url": "https://github.com/nogardxu/pi-open-tui/issues"
   },
   "keywords": [
     "pi-package",
@@ -27,11 +31,14 @@
     "test": "node --test tests/settings-command.test.ts tests/footer.test.ts tests/editor.test.ts tests/telemetry.test.ts",
     "typecheck": "tsc --noEmit"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "pi": {
     "extensions": [
       "./extensions/open-tui/index.ts"
     ],
-    "image": "https://raw.githubusercontent.com/OldSuns/pi-open-tui/main/assets/preview_dashboard_1.png"
+    "image": "https://raw.githubusercontent.com/nogardxu/pi-open-tui/main/assets/preview_dashboard_1.png"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": ">=0.80",
