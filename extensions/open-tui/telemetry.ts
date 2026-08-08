@@ -11,7 +11,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import type { IconMode, TelemetryConfig } from "./config.ts";
 import { resolveGlyphs } from "./icons.ts";
-import { cacheHitColor, fmtTokens, formatDuration } from "./utils.ts";
+import { fmtTokens, formatDuration } from "./utils.ts";
 
 const STALL_THRESHOLD_MS = 1000;
 
@@ -287,36 +287,40 @@ function formatTurnDuration(ms: number): string {
 	return ms < 60_000 ? `${(ms / 1000).toFixed(1)}s` : formatDuration(ms);
 }
 
+function formatClockTime(now: Date): string {
+	return [now.getHours(), now.getMinutes(), now.getSeconds()]
+		.map((part) => part.toString().padStart(2, "0"))
+		.join(":");
+}
+
 export function formatTurnTelemetry(
 	telemetry: TurnTelemetry,
 	theme: Theme,
 	config: TelemetryConfig,
 	iconMode: IconMode,
+	now = new Date(),
 ): string {
+	if (!config.tps && !config.ttft && !config.duration && !config.tokens && !config.cost) return "";
 	const glyphs = resolveGlyphs(iconMode);
-	const parts: string[] = [];
-	if (config.tps) {
-		const value = telemetry.tps === null ? "—" : `${telemetry.tps.toFixed(1)} tok/s`;
-		parts.push(theme.fg(telemetry.tps === null ? "muted" : "accent", `${glyphs.speed} TPS ${value}`));
+	const parts: string[] = [theme.fg("dim", `${glyphs.working} ${formatClockTime(now)}`)];
+	if (config.tokens) {
+		parts.push(theme.fg("dim", `${glyphs.input} ${fmtTokens(telemetry.inputTokens)}`));
+		parts.push(theme.fg("dim", `${glyphs.output} ${fmtTokens(telemetry.outputTokens)}`));
+		const cache = telemetry.cacheHitRate === undefined ? "—" : `${telemetry.cacheHitRate.toFixed(1)}%`;
+		parts.push(theme.fg("dim", `${glyphs.cacheHit} ${cache}`));
 	}
-	if (config.ttft) {
-		parts.push(theme.fg("text", `${glyphs.latency} TTFT ${formatTurnDuration(telemetry.ttftMs)}`));
+	if (config.cost) {
+		parts.push(theme.fg("dim", `${glyphs.cost} ${telemetry.costUsd.toFixed(3)}`));
 	}
 	if (config.duration) {
-		parts.push(theme.fg("success", `${glyphs.done} ${formatTurnDuration(telemetry.totalMs)}`));
+		parts.push(theme.fg("dim", `${glyphs.done} ${formatTurnDuration(telemetry.totalMs)}`));
 	}
-	if (config.tokens) {
-		parts.push(theme.fg("accent", `${glyphs.input} ${fmtTokens(telemetry.inputTokens)}`));
-		parts.push(theme.fg("success", `${glyphs.output} ${fmtTokens(telemetry.outputTokens)}`));
-		if (telemetry.cacheHitRate !== undefined) {
-			parts.push(theme.fg(cacheHitColor(telemetry.cacheHitRate), `${glyphs.cacheHit} ${telemetry.cacheHitRate.toFixed(1)}%`));
-		}
+	if (config.tps) {
+		const value = telemetry.tps === null ? "—" : `${telemetry.tps.toFixed(1)} Tok/s`;
+		parts.push(theme.fg("dim", `${glyphs.speed} ${value}`));
 	}
-	if (config.stalls && telemetry.stallMs > 0) {
-		parts.push(theme.fg("warning", `${glyphs.stall} stall ${telemetry.stallCount}x / ${formatTurnDuration(telemetry.stallMs)}`));
+	if (config.ttft) {
+		parts.push(theme.fg("dim", `${glyphs.latency} ${formatTurnDuration(telemetry.ttftMs)}`));
 	}
-	if (config.cost && telemetry.rateUsdPerMTokens !== null) {
-		parts.push(theme.fg("warning", `${glyphs.cost} $${telemetry.rateUsdPerMTokens.toFixed(2)}/M`));
-	}
-	return parts.join(` ${theme.fg("dim", "|")} `);
+	return parts.join(" ");
 }

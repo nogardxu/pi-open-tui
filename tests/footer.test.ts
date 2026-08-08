@@ -127,7 +127,7 @@ test("ASCII footer renders icons as semantic labels", () => {
 		"↑ 200",
 		"↓ 80",
 		"c 33.3%",
-		"$ $0.250",
+		"$ 0.250",
 		"& goal active",
 	]) {
 		assert.ok(output.includes(expected), `missing ${expected}\n${output}`);

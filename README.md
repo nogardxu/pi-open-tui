@@ -12,7 +12,7 @@ A polished TUI for [Pi](https://pi.dev) coding agent. Combines the best of pi-ha
 - **60+ runtime detection** — Node, Rust, Go, Python, Ruby, Java, Swift, Kotlin, C/C++, Deno, Bun, and many more
 - **Git status** — branch, ahead/behind, modified/untracked/staged/stashed, detached HEAD commit hash + tag
 - **Live clock** — current local time in the footer, refreshed once per second
-- **Turn telemetry** — generation speed, TTFT, stalls, tokens, and list-price rate after each complete agent run
+- **Turn telemetry** — timestamp, token counts, cache rate, actual cost, duration, generation speed, and TTFT after each complete agent run
 - **Zero prototype patches** — uses public Pi APIs (setHeader/setFooter/setEditorComponent), safe across Pi updates
 - **Interactive settings UI** — `/open-tui` opens a tabbed settings dialog (General / Icons / Footer / Telemetry)
 
@@ -59,7 +59,6 @@ Run `/open-tui` to open the interactive settings UI. Configuration is stored at 
     "ttft": true,
     "duration": true,
     "tokens": true,
-    "stalls": true,
     "cost": true
   }
 }
@@ -76,12 +75,12 @@ Run `/open-tui` to open the interactive settings UI. Configuration is stored at 
 After each complete agent run, open-tui shows one transient notification. Tool-call turns are aggregated into that single result:
 
 ```text
-> TPS 42.5 tok/s | ~ TTFT 1.2s | + 29.7s | ↑ 567 | ↓ 1.2k | ! stall 1x / 4.3s | $ $3.60/M
+ 14:32:07 ↑ 567 ↓ 1.2k  82.5%  0.012  29.7s 󰓅 42.5 Tok/s  1.2s
 ```
 
-The notification uses the footer's icon mode and semantic theme colors. Configure its master switch and individual TPS, TTFT, duration, token, stall, and cost segments from the **Telemetry** tab in `/open-tui`.
+The notification uses the footer's icon mode. All telemetry segments use the `dim` theme color and are separated by spaces. Configure its master switch and individual TPS, TTFT, duration, token, and cost segments from the **Telemetry** tab in `/open-tui`.
 
-TPS is the complete generation throughput for the agent run: all provider-reported assistant output tokens divided by the summed generation time of every LLM turn, measured from `turn_start` through the assistant `message_end`. This includes time-to-first-token, hidden reasoning, buffering, and stalls so the token count and timing cover the same interval. Tool execution between turns is excluded. A run with no output tokens or no measurable generation time is shown as `TPS —`. The `stall` segment shows occurrence count followed by accumulated duration. The optional `$ / M` value uses the model's list-price `usage.cost.total`; it is not the session's cumulative cost shown in the footer.
+TPS is the complete generation throughput for the agent run: all provider-reported assistant output tokens divided by the summed generation time of every LLM turn, measured from `turn_start` through the assistant `message_end`. This includes time-to-first-token, hidden reasoning, buffering, and stalls so the token count and timing cover the same interval. Tool execution between turns is excluded. A run with no output tokens or no measurable generation time is shown as `—`. The cost segment uses the actual accumulated `usage.cost.total`; it is not a per-million-token rate.
 
 ## Local development
 

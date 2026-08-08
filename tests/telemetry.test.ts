@@ -14,6 +14,7 @@ import { formatTurnTelemetry, TurnTelemetryTracker } from "../extensions/open-tu
 const theme = {
 	fg: (_color: string, text: string) => text,
 } as Theme;
+const sampleTime = new Date(2025, 0, 2, 14, 32, 7);
 
 function makeMessage(output = 20, input = 50, cacheRead = 0, cacheWrite = 0): AssistantMessage {
 	const totalTokens = input + output + cacheRead + cacheWrite;
@@ -92,8 +93,8 @@ test("uses total output over full generation time", () => {
 		measurementMs: 5_000,
 	});
 	assert.equal(
-		formatTurnTelemetry(telemetry!, theme, DEFAULT_CONFIG.telemetry, "ascii"),
-		"> TPS 4.0 tok/s | ~ TTFT 4.0s | + 5.0s | ↑ 50 | ↓ 20 | $ $4.00/M",
+		formatTurnTelemetry(telemetry!, theme, DEFAULT_CONFIG.telemetry, "ascii", sampleTime),
+		"o 14:32:07 ↑ 50 ↓ 20 c — $ 0.000 + 5.0s > 4.0 Tok/s ~ 4.0s",
 	);
 });
 
@@ -168,10 +169,10 @@ test("uses footer semantics and respects telemetry segment settings", () => {
 	};
 
 	assert.match(
-		formatTurnTelemetry(telemetry, styledTheme, DEFAULT_CONFIG.telemetry, "ascii"),
-		/^> TPS 50\.0 tok\/s \| ~ TTFT 0\.2s.*! stall 1x \/ 0\.8s \| \$ \$4\.00\/M$/,
+		formatTurnTelemetry(telemetry, styledTheme, DEFAULT_CONFIG.telemetry, "ascii", sampleTime),
+		/^o 14:32:07 ↑ 50 ↓ 20 c — \$ 0\.000 \+ 0\.9s > 50\.0 Tok\/s ~ 0\.2s$/,
 	);
-	assert.deepEqual(colors, ["accent", "text", "success", "accent", "success", "warning", "warning", "dim"]);
+	assert.deepEqual(colors, ["dim", "dim", "dim", "dim", "dim", "dim", "dim", "dim"]);
 
 	const hidden: typeof DEFAULT_CONFIG.telemetry = {
 		enabled: false,
@@ -179,7 +180,6 @@ test("uses footer semantics and respects telemetry segment settings", () => {
 		ttft: false,
 		duration: false,
 		tokens: false,
-		stalls: false,
 		cost: false,
 	};
 	assert.equal(formatTurnTelemetry(telemetry, theme, hidden, "ascii"), "");
@@ -229,7 +229,7 @@ test("keeps stalls in delivery time so they lower TPS", () => {
 	assert.ok(stalled.tps! < uninterrupted.tps!);
 	assert.equal(stalled.stallMs, 3300);
 	assert.equal(stalled.stallCount, 2);
-	assert.match(formatTurnTelemetry(stalled, theme, DEFAULT_CONFIG.telemetry, "ascii"), /! stall 2x \/ 3\.3s/);
+	assert.doesNotMatch(formatTurnTelemetry(stalled, theme, DEFAULT_CONFIG.telemetry, "ascii"), /! stall 2x \/ 3\.3s/);
 });
 
 test("only meaningful stream deltas define TTFT and stalls", () => {
@@ -423,5 +423,6 @@ test("open-tui notifies once after a complete agent run", () => {
 	assert.equal(notifications.length, 0);
 	emit("agent_settled", { type: "agent_settled" });
 	assert.equal(notifications.length, 1);
-	assert.match(notifications[0]!, /TPS .*TTFT/);
+	assert.match(notifications[0]!, /Tok\/s/);
+	assert.doesNotMatch(notifications[0]!, /TPS|TTFT/);
 });

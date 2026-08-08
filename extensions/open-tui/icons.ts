@@ -40,7 +40,7 @@ const NERD_GLYPHS: IconGlyphs = {
 	input: "",
 	output: "",
 	cacheHit: "",
-	cost: "",
+	cost: "",
 	speed: "󰓅",
 	latency: "",
 	stall: "",

@@ -41,8 +41,7 @@ const COPY = {
 			extensionStatuses: "Extension status line",
 			totalDuration: "Total duration",
 			tokenCounts: "Token counts",
-			stallDetails: "Stall details",
-			costRate: "Cost rate",
+			costRate: "Cost",
 		},
 		values: {
 			on: "On",
@@ -72,8 +71,7 @@ const COPY = {
 			extensionStatuses: "扩展状态行",
 			totalDuration: "总耗时",
 			tokenCounts: "Token 数量",
-			stallDetails: "停顿详情",
-			costRate: "费用速率",
+			costRate: "实际费用",
 		},
 		values: {
 			on: "开启",
@@ -163,7 +161,6 @@ function buildTelemetryItems(config: OpenTuiConfig, copy: SettingsCopy): Setting
 		{ id: "ttft", label: "TTFT", currentValue: flag(telemetry.ttft) },
 		{ id: "duration", label: copy.labels.totalDuration, currentValue: flag(telemetry.duration) },
 		{ id: "tokens", label: copy.labels.tokenCounts, currentValue: flag(telemetry.tokens) },
-		{ id: "stalls", label: copy.labels.stallDetails, currentValue: flag(telemetry.stalls) },
 		{ id: "cost", label: copy.labels.costRate, currentValue: flag(telemetry.cost) },
 	];
 }

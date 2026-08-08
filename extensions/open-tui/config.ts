@@ -26,7 +26,6 @@ export interface TelemetryConfig {
 	ttft: boolean;
 	duration: boolean;
 	tokens: boolean;
-	stalls: boolean;
 	cost: boolean;
 }
 
@@ -69,7 +68,6 @@ export const DEFAULT_CONFIG: OpenTuiConfig = {
 		ttft: true,
 		duration: true,
 		tokens: true,
-		stalls: true,
 		cost: true,
 	},
 };
