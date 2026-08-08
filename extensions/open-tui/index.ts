@@ -7,6 +7,7 @@ import { readGitStatus } from "./git.ts";
 import { readRuntimeInfo } from "./runtime.ts";
 import { SessionLifecycle } from "./session-lifecycle.ts";
 import { registerSettingsCommand } from "./settings-command.ts";
+import { installResumeAutocompleteFilter, registerResumeCommand } from "./resume-command.ts";
 import { formatTurnTelemetry, type TurnTelemetry, TurnTelemetryTracker } from "./telemetry.ts";
 import { formatDuration } from "./utils.ts";
 import {
@@ -54,6 +55,7 @@ export default function (pi: ExtensionAPI) {
 	const turnTelemetry = new TurnTelemetryTracker();
 
 	let active = false;
+	let resumeAutocompleteInstalled = false;
 	let lastCtx: ExtensionContext | undefined;
 	let requestFooterRender: (() => void) | undefined;
 	let workingTimer: ReturnType<typeof setInterval> | undefined;
@@ -206,6 +208,10 @@ export default function (pi: ExtensionAPI) {
 
 		ensureConfigExists();
 		config = loadConfig((msg, level) => ctx.ui.notify(msg, level));
+		if (isTuiContext(ctx) && !resumeAutocompleteInstalled) {
+			installResumeAutocompleteFilter(ctx);
+			resumeAutocompleteInstalled = true;
+		}
 
 		if (isInteractiveLaunch() && config.enabled) {
 			clearVisibleScreen();
@@ -222,6 +228,7 @@ export default function (pi: ExtensionAPI) {
 		sessionLifecycle.shutdown();
 		stopWorkingDisplay(ctx);
 		stopGitRefreshTimer();
+		resumeAutocompleteInstalled = false;
 		if (active) {
 			uninstallUi(ctx);
 		}
@@ -297,6 +304,7 @@ export default function (pi: ExtensionAPI) {
 		refreshInteractiveState(ctx);
 	});
 
+	registerResumeCommand(pi);
 	registerSettingsCommand(pi, {
 		getConfig: () => config,
 		onConfigChanged: (newConfig) => {
