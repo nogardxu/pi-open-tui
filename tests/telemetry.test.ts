@@ -10,11 +10,19 @@ import type {
 import { DEFAULT_CONFIG } from "../extensions/open-tui/config.ts";
 import openTui from "../extensions/open-tui/index.ts";
 import { formatTurnTelemetry, TurnTelemetryTracker } from "../extensions/open-tui/telemetry.ts";
+import { fmtTokens, formatContextWindow } from "../extensions/open-tui/utils.ts";
 
 const theme = {
 	fg: (_color: string, text: string) => text,
 } as Theme;
 const sampleTime = new Date(2025, 0, 2, 14, 32, 7);
+
+test("formats token units with uppercase suffixes", () => {
+	assert.equal(fmtTokens(1_200), "1.2K");
+	assert.equal(fmtTokens(12_000), "12K");
+	assert.equal(fmtTokens(1_200_000), "1.2M");
+	assert.equal(formatContextWindow(1_200), "1K");
+});
 
 function makeMessage(output = 20, input = 50, cacheRead = 0, cacheWrite = 0): AssistantMessage {
 	const totalTokens = input + output + cacheRead + cacheWrite;

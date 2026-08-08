@@ -10,7 +10,12 @@ import {
 	truncateToWidth,
 	visibleWidth,
 } from "@earendil-works/pi-tui";
-import type { FooterSeparator, IconMode, OpenTuiConfig } from "./config.ts";
+import {
+	GIT_STATUS_REFRESH_INTERVALS_MS,
+	type FooterSeparator,
+	type IconMode,
+	type OpenTuiConfig,
+} from "./config.ts";
 
 interface SettingItem {
 	id: string;
@@ -32,6 +37,7 @@ const COPY = {
 		thinking: "Thinking level",
 		iconMode: "Icon mode",
 		separator: "Footer separator",
+		gitStatusRefresh: "Git status refresh",
 		clock: "Clock",
 		cwd: "CWD",
 		gitBranch: "Git branch",
@@ -82,6 +88,24 @@ function cycleFooterSeparator(config: OpenTuiConfig): OpenTuiConfig {
 	return { ...config, footer: { separator: next } };
 }
 
+function cycleGitStatusRefresh(config: OpenTuiConfig): OpenTuiConfig {
+	const currentIndex = GIT_STATUS_REFRESH_INTERVALS_MS.indexOf(
+		config.git.statusRefreshIntervalMs as typeof GIT_STATUS_REFRESH_INTERVALS_MS[number],
+	);
+	const nextIndex = currentIndex < 0
+		? 0
+		: (currentIndex + 1) % GIT_STATUS_REFRESH_INTERVALS_MS.length;
+	return {
+		...config,
+		git: { statusRefreshIntervalMs: GIT_STATUS_REFRESH_INTERVALS_MS[nextIndex]! },
+	};
+}
+
+function formatInterval(ms: number): string {
+	if (ms % 60_000 === 0) return `${ms / 60_000}m`;
+	return `${ms / 1_000}s`;
+}
+
 function toggleEnabled(config: OpenTuiConfig): OpenTuiConfig {
 	return { ...config, enabled: !config.enabled };
 }
@@ -117,6 +141,7 @@ function buildSegmentsItems(config: OpenTuiConfig, copy: SettingsCopy): SettingI
 		{ id: "extensionStatuses", label: copy.labels.extensionStatuses, currentValue: flag(segs.extensionStatuses) },
 		{ id: "clock", label: copy.labels.clock, currentValue: flag(segs.clock) },
 		{ id: "separator", label: copy.labels.separator, currentValue: copy.values.separators[config.footer.separator] },
+		{ id: "gitStatusRefresh", label: copy.labels.gitStatusRefresh, currentValue: formatInterval(config.git.statusRefreshIntervalMs) },
 	];
 }
 
@@ -155,6 +180,7 @@ function handleSettingChange(
 		if (itemId === "mode") return cycleIconMode(config);
 	}
 	if (tab === "segments" && itemId === "separator") return cycleFooterSeparator(config);
+	if (tab === "segments" && itemId === "gitStatusRefresh") return cycleGitStatusRefresh(config);
 	if (tab === "segments") {
 		return toggleSetting(config, itemId as keyof OpenTuiConfig["footerSegments"]);
 	}

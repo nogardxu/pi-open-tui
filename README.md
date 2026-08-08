@@ -41,6 +41,9 @@ Run `/open-tui` to open the interactive settings UI. Configuration is stored at 
   "footer": {
     "separator": "dot"
   },
+  "git": {
+    "statusRefreshIntervalMs": 30000
+  },
   "footerSegments": {
     "cwd": true,
     "model": true,
@@ -71,6 +74,7 @@ Run `/open-tui` to open the interactive settings UI. Configuration is stored at 
 
 - `icons.mode`: `auto` (detect Nerd Font), `nerd` (force Nerd Font glyphs), or `ascii` (plain fallbacks)
 - `footer.separator`: `dot`, `pipe`, `slash`, or `arrow`; controls separators between segments on each side of the single-line footer
+- `git.statusRefreshIntervalMs`: Git status polling interval in milliseconds; defaults to `30000` (30 seconds)
 - `footerSegments.gitCommit`: shows short hash + tag on detached HEAD (off by default)
 - `footerSegments.extensionStatuses`: shows statuses published by extensions through Pi's `setStatus()` API inline on the left side (on by default); turn it off to hide them
 
@@ -79,7 +83,7 @@ Run `/open-tui` to open the interactive settings UI. Configuration is stored at 
 After each complete agent run, open-tui shows one transient notification. Tool-call turns are aggregated into that single result:
 
 ```text
- 14:32:07  ↑ 567  ↓ 1.2k   82.5%   0.012   29.7s  󰓅 42.5 Tok/s   1.2s
+ 14:32:07  ↑ 567  ↓ 1.2K   82.5%   0.012   29.7s  󰓅 42.5 Tok/s   1.2s
 ```
 
 The notification uses the footer's icon mode. All telemetry segments use the `dim` theme color and are separated by two spaces. Configure its master switch, timestamp, input/output token, cache rate, TPS, TTFT, duration, and cost segments from the **Telemetry** tab in `/open-tui`.

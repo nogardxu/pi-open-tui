@@ -52,6 +52,8 @@ export default function (pi: ExtensionAPI) {
 	let lastCtx: ExtensionContext | undefined;
 	let requestFooterRender: (() => void) | undefined;
 	let workingTimer: ReturnType<typeof setInterval> | undefined;
+	let gitRefreshTimer: ReturnType<typeof setInterval> | undefined;
+	let gitRefreshInFlight = false;
 	let cleanupHeader: (() => void) | undefined;
 	let cleanupFooter: (() => void) | undefined;
 	let cleanupEditor: (() => void) | undefined;
@@ -107,6 +109,7 @@ export default function (pi: ExtensionAPI) {
 			cleanupEditor = installEditor(pi, ctx);
 			active = true;
 		}
+		startGitRefreshTimer(ctx);
 	};
 
 	const refreshHeader = (ctx: ExtensionContext) => {
@@ -116,6 +119,7 @@ export default function (pi: ExtensionAPI) {
 	};
 
 	const uninstallUi = (ctx: ExtensionContext) => {
+		stopGitRefreshTimer();
 		if (!isTuiContext(ctx)) return;
 		stopWorkingDisplay(ctx);
 		if (active) {
@@ -131,16 +135,38 @@ export default function (pi: ExtensionAPI) {
 	};
 
 	const scheduleGitRefresh = async (ctx: ExtensionContext) => {
-		if (!sessionLifecycle.isCurrent()) return;
-		const generation = sessionLifecycle.currentGeneration();
-		const cwd = ctx.cwd;
-		const git = await readGitStatus(cwd, {
-			readCommit: true,
-			readTag: config.footerSegments.gitCommit,
-		});
-		if (!sessionLifecycle.isCurrent(generation)) return;
-		state.git = git;
-		requestFooterRender?.();
+		if (!sessionLifecycle.isCurrent() || gitRefreshInFlight) return;
+		gitRefreshInFlight = true;
+		try {
+			const generation = sessionLifecycle.currentGeneration();
+			const cwd = ctx.cwd;
+			const git = await readGitStatus(cwd, {
+				readCommit: true,
+				readTag: config.footerSegments.gitCommit,
+			});
+			if (!sessionLifecycle.isCurrent(generation)) return;
+			state.git = git;
+			requestFooterRender?.();
+		} finally {
+			gitRefreshInFlight = false;
+		}
+	};
+
+	const stopGitRefreshTimer = () => {
+		if (gitRefreshTimer) {
+			clearInterval(gitRefreshTimer);
+			gitRefreshTimer = undefined;
+		}
+	};
+
+	const startGitRefreshTimer = (ctx: ExtensionContext) => {
+		stopGitRefreshTimer();
+		if (!isTuiContext(ctx) || !config.enabled || !active) return;
+		gitRefreshTimer = setInterval(() => {
+			if (!sessionLifecycle.isCurrent() || !active || !config.enabled) return;
+			void scheduleGitRefresh(ctx);
+		}, config.git.statusRefreshIntervalMs);
+		gitRefreshTimer.unref?.();
 	};
 
 	const refreshRuntime = async (ctx: ExtensionContext) => {
@@ -184,6 +210,7 @@ export default function (pi: ExtensionAPI) {
 	pi.on("session_shutdown", async (_event, ctx) => {
 		sessionLifecycle.shutdown();
 		stopWorkingDisplay(ctx);
+		stopGitRefreshTimer();
 		if (active) {
 			uninstallUi(ctx);
 		}
@@ -274,6 +301,7 @@ export default function (pi: ExtensionAPI) {
 					uninstallUi(lastCtx);
 				}
 			}
+			if (lastCtx && active) startGitRefreshTimer(lastCtx);
 			requestFooterRender?.();
 		},
 	});

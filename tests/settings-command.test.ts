@@ -168,6 +168,17 @@ test("cycles the footer separator from the Footer tab", async () => {
 	assert.match(selectedLine(settings.component), /Pipe/);
 });
 
+test("cycles the Git status refresh interval from the Footer tab", async () => {
+	const settings = await openSettings();
+	settings.component.handleInput("\x1b[C");
+	for (let i = 0; i < 13; i++) settings.component.handleInput("\x1b[B");
+	assert.match(selectedLine(settings.component), /Git status refresh/);
+
+	settings.component.handleInput(" ");
+	assert.equal(settings.getConfig().git.statusRefreshIntervalMs, 60_000);
+	assert.match(selectedLine(settings.component), /1m/);
+});
+
 test("keeps the framed English dialog within narrow widths", async () => {
 	const settings = await openSettings();
 

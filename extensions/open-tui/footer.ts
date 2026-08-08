@@ -195,7 +195,7 @@ export function installFooter(
 						priority: 6,
 					});
 				}
-				if (segments.thinking && meta.effort && meta.effort !== "off") {
+				if (segments.thinking && meta.effort) {
 					leftParts.push({
 						text: `${theme.fg(effortColor(meta.effort), glyphs.thinking)} ${theme.fg(effortColor(meta.effort), meta.effort)}`,
 						priority: 5,

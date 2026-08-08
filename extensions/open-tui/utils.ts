@@ -46,15 +46,15 @@ export function truncatePath(path: string, maxLen: number): string {
 
 export function fmtTokens(n: number): string {
 	if (n < 1000) return n.toString();
-	if (n < 10_000) return `${(n / 1000).toFixed(1)}k`;
-	if (n < 1_000_000) return `${Math.round(n / 1000)}k`;
+	if (n < 10_000) return `${(n / 1000).toFixed(1)}K`;
+	if (n < 1_000_000) return `${Math.round(n / 1000)}K`;
 	if (n < 10_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
 	return `${Math.round(n / 1_000_000)}M`;
 }
 
 export function formatContextWindow(n: number): string {
 	if (n < 1000) return n.toString();
-	if (n < 1_000_000) return `${Math.round(n / 1000)}k`;
+	if (n < 1_000_000) return `${Math.round(n / 1000)}K`;
 	return `${(n / 1_000_000).toFixed(2).replace(/\.0+$/, "").replace(/(\.\d*[1-9])0+$/, "$1")}M`;
 }
 
@@ -181,6 +181,8 @@ export function providerColor(provider: string): ThemeColor {
 
 export function effortColor(level: ThinkingLevel | string | undefined): ThemeColor {
 	switch (level) {
+		case "off":
+			return "thinkingOff";
 		case "minimal":
 			return "thinkingMinimal";
 		case "low":

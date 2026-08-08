@@ -92,11 +92,12 @@ test("ASCII footer renders icons as semantic labels", () => {
 		runtime: { name: "nodejs", version: "24.6.0" },
 	};
 
+	let effort = "high";
 	installFooter(
 		ctx,
 		() => state,
 		() => config,
-		() => ({ provider: "OpenAI", model: "gpt-5", effort: "high" }),
+		() => ({ provider: "OpenAI", model: "gpt-5", effort }),
 		{ setRequestRender() {}, scheduleGitRefresh() {} },
 	);
 	assert.ok(footerFactory);
@@ -137,6 +138,11 @@ test("ASCII footer renders icons as semantic labels", () => {
 	assert.equal(extensionStatusReads, 1);
 
 	config.footerSegments.extensionStatuses = false;
+	effort = "off";
+	const offOutput = component.render(160).join("\n");
+	assert.ok(offOutput.includes("~ off"), `missing off thinking segment\n${offOutput}`);
+	effort = "high";
+
 	const hiddenOutput = component.render(160);
 	assert.equal(hiddenOutput.length, 1);
 	assert.doesNotMatch(hiddenOutput.join("\n"), /goal active/);

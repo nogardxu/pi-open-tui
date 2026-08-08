@@ -5,6 +5,9 @@ import type { IconMode } from "./icons.ts";
 
 export type FooterSeparator = "dot" | "pipe" | "slash" | "arrow";
 
+export const GIT_STATUS_REFRESH_INTERVALS_MS = [1_000, 10_000, 30_000, 60_000, 120_000, 600_000] as const;
+export const DEFAULT_GIT_STATUS_REFRESH_INTERVAL_MS = 30_000;
+
 export type { IconMode } from "./icons.ts";
 
 export interface FooterSegments {
@@ -20,6 +23,10 @@ export interface FooterSegments {
 	cost: boolean;
 	extensionStatuses: boolean;
 	clock: boolean;
+}
+
+export interface GitConfig {
+	statusRefreshIntervalMs: number;
 }
 
 export interface TelemetryConfig {
@@ -42,6 +49,7 @@ export interface OpenTuiConfig {
 	footer: {
 		separator: FooterSeparator;
 	};
+	git: GitConfig;
 	footerSegments: FooterSegments;
 	telemetry: TelemetryConfig;
 }
@@ -53,6 +61,9 @@ export const DEFAULT_CONFIG: OpenTuiConfig = {
 	},
 	footer: {
 		separator: "dot",
+	},
+	git: {
+		statusRefreshIntervalMs: DEFAULT_GIT_STATUS_REFRESH_INTERVAL_MS,
 	},
 	footerSegments: {
 		cwd: true,
@@ -145,6 +156,9 @@ export function loadConfig(notify?: (msg: string, level: "warning" | "info") => 
 		delete (config.telemetry as TelemetryConfig & { tokens?: unknown }).tokens;
 		if (!["dot", "pipe", "slash", "arrow"].includes(config.footer.separator)) {
 			config.footer.separator = DEFAULT_CONFIG.footer.separator;
+		}
+		if (!Number.isFinite(config.git.statusRefreshIntervalMs) || config.git.statusRefreshIntervalMs < 1_000) {
+			config.git.statusRefreshIntervalMs = DEFAULT_GIT_STATUS_REFRESH_INTERVAL_MS;
 		}
 		return config;
 	} catch (err) {
