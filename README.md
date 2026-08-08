@@ -1,8 +1,8 @@
 # pi-open-tui
 
-A polished TUI for [Pi](https://pi.dev) coding agent. Combines the best of pi-haiku, pi-claude-code-tui, and pi-zentui into one cohesive package.
+A polished TUI extension for the [Pi](https://pi.dev) coding agent. Combines the best of pi-haiku, pi-claude-code-tui, and pi-zentui into one cohesive package.
 
-![Preview](https://raw.githubusercontent.com/OldSuns/pi-open-tui/main/assets/preview_dashboard_1.png)
+![Preview](https://raw.githubusercontent.com/nogardxu/pi-open-tui/main/assets/preview_dashboard_1.png)
 
 ## What's in it
 
@@ -15,18 +15,25 @@ A polished TUI for [Pi](https://pi.dev) coding agent. Combines the best of pi-ha
 - **Turn telemetry** — timestamp, token counts, cache rate, actual cost, duration, generation speed, and TTFT after each complete agent run
 - **Zero prototype patches** — uses public Pi APIs (setHeader/setFooter/setEditorComponent), safe across Pi updates
 - **Interactive settings UI** — `/open-tui` opens a tabbed settings dialog (General / Footer / Telemetry)
+- **Popup session selector** — `/resume-popup` searches, sorts, renames, deletes, and switches sessions without leaving the TUI
+- **Tool call cards** — readable, state-aware cards for read, write, edit, find, grep, ls, and bash tool calls
 
 ## Install
 
 ```bash
-pi install npm:pi-open-tui
+pi install npm:@nogardxu/pi-open-tui
 ```
 
 Or try it for one run:
 
 ```bash
-pi -e npm:pi-open-tui
+pi -e npm:@nogardxu/pi-open-tui
 ```
+
+## Commands
+
+- `/open-tui` — open the tabbed settings dialog (General / Footer / Telemetry)
+- `/resume-popup` — search and switch sessions in an overlaid selector
 
 ## Configuration
 

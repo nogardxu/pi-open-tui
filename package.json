@@ -1,7 +1,7 @@
 {
   "name": "@nogardxu/pi-open-tui",
-  "version": "0.1.0",
-  "description": "A customized fork of pi-open-tui for personal use. A polished TUI for Pi coding agent with an animated logo header, Starship-style footer, rounded editor, model metadata, and prompt-box user messages.",
+  "version": "0.2.0",
+  "description": "A polished TUI extension for the Pi coding agent with an animated logo header, Starship-style footer, rounded editor, model metadata, and prompt-box user messages.",
   "type": "module",
   "repository": {
     "type": "git",
