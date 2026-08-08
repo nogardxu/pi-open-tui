@@ -7,8 +7,10 @@ import {
 	type SelectItem,
 	type TUI,
 	Text,
+	truncateToWidth,
+	visibleWidth,
 } from "@earendil-works/pi-tui";
-import type { FooterSeparator, IconMode, OpenTuiConfig, SettingsLanguage } from "./config.ts";
+import type { FooterSeparator, IconMode, OpenTuiConfig } from "./config.ts";
 
 interface SettingItem {
 	id: string;
@@ -16,74 +18,45 @@ interface SettingItem {
 	currentValue: string;
 }
 
-type Tab = "features" | "icons" | "segments" | "telemetry";
+type Tab = "general" | "segments" | "telemetry";
 
-const TABS: Tab[] = ["features", "icons", "segments", "telemetry"];
+const TABS: Tab[] = ["general", "segments", "telemetry"];
 
 const COPY = {
-	en: {
-		title: "Open TUI Settings",
-		tabs: { features: "General", icons: "Icons", segments: "Footer", telemetry: "Telemetry" },
-		hint: "Tab/Shift+Tab/←/→: tabs · ↑/↓: move · Enter/Space: change · Esc/q: close",
-		labels: {
-			enabled: "Enabled",
-			language: "Language",
-			iconMode: "Icon mode",
-			separator: "Footer separator",
-			cwd: "CWD",
-			gitBranch: "Git branch",
-			gitStatus: "Git status",
-			gitCommit: "Git commit (detached)",
-			runtime: "Runtime",
-			context: "Context bar",
-			tokens: "Tokens",
-			cost: "Cost",
-			extensionStatuses: "Extension status line",
-			totalDuration: "Total duration",
-			tokenCounts: "Token counts",
-			costRate: "Cost",
-		},
-		values: {
-			on: "On",
-			off: "Off",
-			languages: { en: "English", zh: "简体中文" },
-			icons: { auto: "Auto", nerd: "Nerd", ascii: "ASCII" },
-			separators: { dot: "Dot", pipe: "Pipe", slash: "Slash", arrow: "Arrow" },
-		},
+	title: "Open TUI Settings",
+	tabs: { general: "General", segments: "Footer", telemetry: "Telemetry" },
+	hint: "Tab/Shift+Tab/←/→: tabs · ↑/↓: move · Enter/Space: change · Esc/q: close",
+	labels: {
+		enabled: "Enabled",
+		model: "Model",
+		thinking: "Thinking level",
+		iconMode: "Icon mode",
+		separator: "Footer separator",
+		clock: "Clock",
+		cwd: "CWD",
+		gitBranch: "Git branch",
+		gitStatus: "Git status",
+		gitCommit: "Git commit (detached)",
+		runtime: "Runtime",
+		context: "Context bar",
+		tokens: "Tokens",
+		cost: "Cost",
+		extensionStatuses: "Extension status line",
+		totalDuration: "Total duration",
+		inputTokens: "Input tokens",
+		outputTokens: "Output tokens",
+		cacheRate: "Cache hit rate",
+		costRate: "Cost",
 	},
-	zh: {
-		title: "Open TUI 设置",
-		tabs: { features: "常规", icons: "图标", segments: "Footer", telemetry: "遥测" },
-		hint: "Tab/Shift+Tab/←/→：切页 · ↑/↓：移动 · Enter/Space：更改 · Esc/q：关闭",
-		labels: {
-			enabled: "启用",
-			language: "语言",
-			iconMode: "图标模式",
-			separator: "Footer 分隔符",
-			cwd: "当前目录",
-			gitBranch: "Git 分支",
-			gitStatus: "Git 状态",
-			gitCommit: "Git 提交（分离 HEAD）",
-			runtime: "运行环境",
-			context: "上下文栏",
-			tokens: "Token",
-			cost: "费用",
-			extensionStatuses: "扩展状态行",
-			totalDuration: "总耗时",
-			tokenCounts: "Token 数量",
-			costRate: "实际费用",
-		},
-		values: {
-			on: "开启",
-			off: "关闭",
-			languages: { en: "English", zh: "简体中文" },
-			icons: { auto: "自动", nerd: "Nerd", ascii: "ASCII" },
-			separators: { dot: "点号", pipe: "竖线", slash: "斜线", arrow: "箭头" },
-		},
+	values: {
+		on: "On",
+		off: "Off",
+		icons: { auto: "Auto", nerd: "Nerd", ascii: "ASCII" },
+		separators: { dot: "Dot", pipe: "Pipe", slash: "Slash", arrow: "Arrow" },
 	},
 } as const;
 
-type SettingsCopy = (typeof COPY)[SettingsLanguage];
+type SettingsCopy = typeof COPY;
 
 function toggleSetting(config: OpenTuiConfig, key: keyof OpenTuiConfig["footerSegments"]): OpenTuiConfig {
 	return {
@@ -113,10 +86,6 @@ function toggleEnabled(config: OpenTuiConfig): OpenTuiConfig {
 	return { ...config, enabled: !config.enabled };
 }
 
-function toggleLanguage(config: OpenTuiConfig): OpenTuiConfig {
-	return { ...config, settingsLanguage: config.settingsLanguage === "en" ? "zh" : "en" };
-}
-
 function toggleTelemetry(config: OpenTuiConfig, key: keyof OpenTuiConfig["telemetry"]): OpenTuiConfig {
 	return {
 		...config,
@@ -124,15 +93,11 @@ function toggleTelemetry(config: OpenTuiConfig, key: keyof OpenTuiConfig["teleme
 	};
 }
 
-function buildFeaturesItems(config: OpenTuiConfig, copy: SettingsCopy): SettingItem[] {
+function buildGeneralItems(config: OpenTuiConfig, copy: SettingsCopy): SettingItem[] {
 	return [
 		{ id: "enabled", label: copy.labels.enabled, currentValue: config.enabled ? copy.values.on : copy.values.off },
-		{ id: "settingsLanguage", label: copy.labels.language, currentValue: copy.values.languages[config.settingsLanguage] },
+		{ id: "mode", label: copy.labels.iconMode, currentValue: copy.values.icons[config.icons.mode] },
 	];
-}
-
-function buildIconsItems(config: OpenTuiConfig, copy: SettingsCopy): SettingItem[] {
-	return [{ id: "mode", label: copy.labels.iconMode, currentValue: copy.values.icons[config.icons.mode] }];
 }
 
 function buildSegmentsItems(config: OpenTuiConfig, copy: SettingsCopy): SettingItem[] {
@@ -140,6 +105,8 @@ function buildSegmentsItems(config: OpenTuiConfig, copy: SettingsCopy): SettingI
 	const flag = (value: boolean) => value ? copy.values.on : copy.values.off;
 	return [
 		{ id: "cwd", label: copy.labels.cwd, currentValue: flag(segs.cwd) },
+		{ id: "model", label: copy.labels.model, currentValue: flag(segs.model) },
+		{ id: "thinking", label: copy.labels.thinking, currentValue: flag(segs.thinking) },
 		{ id: "gitBranch", label: copy.labels.gitBranch, currentValue: flag(segs.gitBranch) },
 		{ id: "gitStatus", label: copy.labels.gitStatus, currentValue: flag(segs.gitStatus) },
 		{ id: "gitCommit", label: copy.labels.gitCommit, currentValue: flag(segs.gitCommit) },
@@ -148,6 +115,7 @@ function buildSegmentsItems(config: OpenTuiConfig, copy: SettingsCopy): SettingI
 		{ id: "tokens", label: copy.labels.tokens, currentValue: flag(segs.tokens) },
 		{ id: "cost", label: copy.labels.cost, currentValue: flag(segs.cost) },
 		{ id: "extensionStatuses", label: copy.labels.extensionStatuses, currentValue: flag(segs.extensionStatuses) },
+		{ id: "clock", label: copy.labels.clock, currentValue: flag(segs.clock) },
 		{ id: "separator", label: copy.labels.separator, currentValue: copy.values.separators[config.footer.separator] },
 	];
 }
@@ -157,19 +125,21 @@ function buildTelemetryItems(config: OpenTuiConfig, copy: SettingsCopy): Setting
 	const flag = (value: boolean) => value ? copy.values.on : copy.values.off;
 	return [
 		{ id: "enabled", label: copy.labels.enabled, currentValue: flag(telemetry.enabled) },
+		{ id: "timestamp", label: "Timestamp", currentValue: flag(telemetry.timestamp) },
+		{ id: "inputTokens", label: copy.labels.inputTokens, currentValue: flag(telemetry.inputTokens) },
+		{ id: "outputTokens", label: copy.labels.outputTokens, currentValue: flag(telemetry.outputTokens) },
+		{ id: "cacheRate", label: copy.labels.cacheRate, currentValue: flag(telemetry.cacheRate) },
+		{ id: "cost", label: copy.labels.costRate, currentValue: flag(telemetry.cost) },
+		{ id: "duration", label: copy.labels.totalDuration, currentValue: flag(telemetry.duration) },
 		{ id: "tps", label: "TPS", currentValue: flag(telemetry.tps) },
 		{ id: "ttft", label: "TTFT", currentValue: flag(telemetry.ttft) },
-		{ id: "duration", label: copy.labels.totalDuration, currentValue: flag(telemetry.duration) },
-		{ id: "tokens", label: copy.labels.tokenCounts, currentValue: flag(telemetry.tokens) },
-		{ id: "cost", label: copy.labels.costRate, currentValue: flag(telemetry.cost) },
 	];
 }
 
 function buildItems(tab: Tab, config: OpenTuiConfig): SettingItem[] {
-	const copy = COPY[config.settingsLanguage];
+	const copy = COPY;
 	switch (tab) {
-		case "features": return buildFeaturesItems(config, copy);
-		case "icons": return buildIconsItems(config, copy);
+		case "general": return buildGeneralItems(config, copy);
 		case "segments": return buildSegmentsItems(config, copy);
 		case "telemetry": return buildTelemetryItems(config, copy);
 	}
@@ -180,11 +150,10 @@ function handleSettingChange(
 	itemId: string,
 	config: OpenTuiConfig,
 ): OpenTuiConfig {
-	if (tab === "features") {
+	if (tab === "general") {
 		if (itemId === "enabled") return toggleEnabled(config);
-		if (itemId === "settingsLanguage") return toggleLanguage(config);
+		if (itemId === "mode") return cycleIconMode(config);
 	}
-	if (tab === "icons" && itemId === "mode") return cycleIconMode(config);
 	if (tab === "segments" && itemId === "separator") return cycleFooterSeparator(config);
 	if (tab === "segments") {
 		return toggleSetting(config, itemId as keyof OpenTuiConfig["footerSegments"]);
@@ -201,12 +170,42 @@ interface SettingsUiHandle {
 	handleInput: (data: string) => void;
 }
 
+class SettingsDivider {
+	private readonly paint: (text: string) => string;
+
+	constructor(paint: (text: string) => string) {
+		this.paint = paint;
+	}
+
+	render(width: number): string[] {
+		return [this.paint("─".repeat(Math.max(0, width)))];
+	}
+
+	invalidate(): void {}
+}
+
+class SettingsSpacer {
+	private height = 0;
+
+	setHeight(height: number): void {
+		this.height = Math.max(0, height);
+	}
+
+	render(width: number): string[] {
+		return Array.from({ length: this.height }, () => " ".repeat(Math.max(0, width)));
+	}
+
+	invalidate(): void {}
+}
+
 class SettingsUi implements SettingsUiHandle {
-	private tab: Tab = "features";
+	private tab: Tab = "general";
 	private config: OpenTuiConfig;
 	private selectList: SelectList;
 	private readonly selectedItemByTab: Partial<Record<Tab, string>> = {};
 	private readonly container: Box;
+	private readonly headerSpacer = new SettingsSpacer();
+	private readonly contentSpacer = new SettingsSpacer();
 	private readonly theme: Theme;
 	private readonly onChange: (config: OpenTuiConfig) => void;
 	private readonly onClose: () => void;
@@ -224,10 +223,11 @@ class SettingsUi implements SettingsUiHandle {
 		this.config = config;
 		this.onChange = onChange;
 		this.onClose = onClose;
-		this.container = new Box(1, 1, (s: string) => theme.bg("customMessageBg", s));
+		this.headerSpacer.setHeight(1);
+		this.container = new Box(1, 0, (s: string) => theme.bg("customMessageBg", s));
 		this.selectList = new SelectList([], 12, {
-			selectedPrefix: (t) => theme.fg("accent", t),
-			selectedText: (t) => theme.fg("accent", t),
+			selectedPrefix: (t) => theme.bold(theme.fg("accent", t)),
+			selectedText: (t) => theme.bold(theme.fg("accent", t)),
 			description: (t) => theme.fg("muted", t),
 			scrollInfo: (t) => theme.fg("dim", t),
 			noMatch: (t) => theme.fg("warning", t),
@@ -248,31 +248,56 @@ class SettingsUi implements SettingsUiHandle {
 		this.rebuild();
 	}
 
-	private rebuild(preferredItemId = this.selectedItemByTab[this.tab]): void {
-		const copy = COPY[this.config.settingsLanguage];
-		this.container.clear();
-		this.container.addChild(new Text(this.theme.bold(this.theme.fg("accent", copy.title)), 1, 0));
-
-		const tabBar = TABS.map((tab) => {
-			const active = tab === this.tab;
-			const label = active ? `[${copy.tabs[tab]}]` : ` ${copy.tabs[tab]} `;
-			return active ? this.theme.fg("accent", label) : this.theme.fg("dim", label);
+	private buildTabBar(tab: Tab): string {
+		return TABS.map((candidate) => {
+			const active = candidate === tab;
+			const label = ` ${COPY.tabs[candidate]} `;
+			return active ? this.theme.bold(this.theme.fg("accent", label)) : this.theme.fg("dim", label);
 		}).join(" ");
-		this.container.addChild(new Text(tabBar, 1, 0));
-		this.container.addChild(new Text(this.theme.fg("dim", copy.hint), 1, 0));
+	}
 
-		const items = buildItems(this.tab, this.config).map((item) => ({
+	private buildSelectItems(tab: Tab): SelectItem[] {
+		return buildItems(tab, this.config).map((item) => ({
 			value: item.id,
 			label: this.compact ? `${item.label}: ${item.currentValue}` : item.label,
 			description: this.compact ? undefined : item.currentValue,
 		} as SelectItem));
-		this.selectList = new SelectList(items, Math.min(items.length, 10), {
-			selectedPrefix: (t) => this.theme.fg("accent", t),
-			selectedText: (t) => this.theme.fg("accent", t),
+	}
+
+	private createSelectList(items: SelectItem[]): SelectList {
+		return new SelectList(items, Math.min(items.length, 10), {
+			selectedPrefix: (t) => this.theme.bold(this.theme.fg("accent", t)),
+			selectedText: (t) => this.theme.bold(this.theme.fg("accent", t)),
 			description: (t) => this.theme.fg("muted", t),
 			scrollInfo: (t) => this.theme.fg("dim", t),
 			noMatch: (t) => this.theme.fg("warning", t),
 		});
+	}
+
+	private measureContainerHeight(width: number): number {
+		const innerWidth = Math.max(1, width - 2);
+		const childWidth = Math.max(1, innerWidth - 2);
+		const hint = new Text(this.theme.fg("dim", COPY.hint), 1, 0);
+		let maxChildLines = 0;
+
+		for (const tab of TABS) {
+			const tabLines = new Text(this.buildTabBar(tab), 1, 0).render(childWidth).length;
+			const selectLines = this.createSelectList(this.buildSelectItems(tab)).render(childWidth).length;
+			const hintLines = hint.render(childWidth).length;
+			maxChildLines = Math.max(maxChildLines, tabLines + 1 + selectLines + 1 + hintLines);
+		}
+
+		return maxChildLines + 1;
+	}
+
+	private rebuild(preferredItemId = this.selectedItemByTab[this.tab]): void {
+		this.container.clear();
+		this.container.addChild(this.headerSpacer);
+		this.container.addChild(new Text(this.buildTabBar(this.tab), 1, 0));
+		this.container.addChild(new SettingsDivider((text) => this.theme.fg("accent", text)));
+
+		const items = this.buildSelectItems(this.tab);
+		this.selectList = this.createSelectList(items);
 		const selectedIndex = items.findIndex((item) => item.value === preferredItemId);
 		if (selectedIndex >= 0) {
 			this.selectList.setSelectedIndex(selectedIndex);
@@ -288,6 +313,9 @@ class SettingsUi implements SettingsUiHandle {
 			this.onClose();
 		};
 		this.container.addChild(this.selectList);
+		this.container.addChild(this.contentSpacer);
+		this.container.addChild(new SettingsDivider((text) => this.theme.fg("accent", text)));
+		this.container.addChild(new Text(this.theme.fg("dim", COPY.hint), 1, 0));
 
 		this.cachedWidth = undefined;
 		this.cachedLines = undefined;
@@ -325,7 +353,29 @@ class SettingsUi implements SettingsUiHandle {
 		}
 		if (this.cachedLines && this.cachedWidth === width) return this.cachedLines;
 		this.cachedWidth = width;
-		this.cachedLines = this.container.render(width);
+		if (width <= 2) {
+			this.cachedLines = this.container.render(Math.max(1, width)).map((line) => truncateToWidth(line, width, ""));
+			return this.cachedLines;
+		}
+
+		const innerWidth = width - 2;
+		this.contentSpacer.setHeight(0);
+		this.container.invalidate();
+		const baseContentLines = this.container.render(innerWidth);
+		const fixedContentHeight = this.measureContainerHeight(width);
+		this.contentSpacer.setHeight(fixedContentHeight - baseContentLines.length);
+		this.container.invalidate();
+		const contentLines = this.container.render(innerWidth);
+		const border = (text: string) => this.theme.fg("accent", text);
+		const title = `─ ${this.theme.bold(this.theme.fg("accent", COPY.title))} `;
+		const top = visibleWidth(title) >= innerWidth
+			? `${border("╭")}${truncateToWidth(title, innerWidth, "")}${border("╮")}`
+			: `${border("╭")}${title}${border("─".repeat(innerWidth - visibleWidth(title)))}${border("╮")}`;
+		const body = contentLines.map((line) =>
+			`${border("│")}${truncateToWidth(line, innerWidth, "", true)}${border("│")}`,
+		);
+		const bottom = `${border("╰")}${border("─".repeat(innerWidth))}${border("╯")}`;
+		this.cachedLines = [top, ...body, bottom];
 		return this.cachedLines;
 	}
 
@@ -362,7 +412,13 @@ export function registerSettingsCommand(
 					tui.requestRender();
 				},
 			};
-		}, { overlay: true });
+		}, {
+			overlay: true,
+			overlayOptions: {
+				anchor: "center",
+				margin: { top: 1, right: 1, bottom: 1, left: 1 },
+			},
+		});
 		},
 	});
 }

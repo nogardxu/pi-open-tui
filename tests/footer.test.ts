@@ -142,6 +142,12 @@ test("ASCII footer renders icons as semantic labels", () => {
 	assert.doesNotMatch(hiddenOutput.join("\n"), /goal active/);
 	assert.equal(extensionStatusReads, 1);
 
+	config.footerSegments.model = false;
+	config.footerSegments.thinking = false;
+	config.footerSegments.clock = false;
+	const hiddenCoreOutput = component.render(160)[0]!;
+	assert.doesNotMatch(hiddenCoreOutput, /M gpt-5|~ high|\d{2}:\d{2}:\d{2}/);
+
 	config.footer.separator = "pipe";
 	const pipeOutput = component.render(160)[0]!;
 	assert.match(pipeOutput, / \| /);

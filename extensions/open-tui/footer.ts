@@ -32,8 +32,8 @@ function renderGitBranchSegment(
 		return `${theme.fg("mdLink", glyphs.git)} ${theme.fg("mdLink", truncatePath(git.branch, maxBranchLen))}`;
 	}
 	if (!git.commit?.detached) return "";
-	const hash = git.commit.oid ? ` ${theme.fg("dim", git.commit.oid.slice(0, 7))}` : "";
-	const tag = git.commit.tag ? ` ${theme.fg("dim", git.commit.tag)}` : "";
+	const hash = segments.gitCommit && git.commit.oid ? ` ${theme.fg("dim", git.commit.oid.slice(0, 7))}` : "";
+	const tag = segments.gitCommit && git.commit.tag ? ` ${theme.fg("dim", git.commit.tag)}` : "";
 	return `${theme.fg("warning", glyphs.git)} ${theme.fg("warning", "HEAD")}${hash}${tag}`;
 }
 
@@ -189,11 +189,13 @@ export function installFooter(
 						priority: 6,
 					});
 				}
-				leftParts.push({
-					text: `${theme.fg("mdLink", glyphs.model)} ${theme.fg("text", meta.model)}`,
-					priority: 6,
-				});
-				if (meta.effort && meta.effort !== "off") {
+				if (segments.model) {
+					leftParts.push({
+						text: `${theme.fg("mdLink", glyphs.model)} ${theme.fg("text", meta.model)}`,
+						priority: 6,
+					});
+				}
+				if (segments.thinking && meta.effort && meta.effort !== "off") {
 					leftParts.push({
 						text: `${theme.fg(effortColor(meta.effort), glyphs.thinking)} ${theme.fg(effortColor(meta.effort), meta.effort)}`,
 						priority: 5,
@@ -220,7 +222,9 @@ export function installFooter(
 				for (const text of renderUsageSegments(theme, totals, glyphs, segments)) {
 					rightParts.push({ text, priority: 4 });
 				}
-				rightParts.push({ text: renderClockSegment(theme, glyphs), priority: 6 });
+				if (segments.clock) {
+					rightParts.push({ text: renderClockSegment(theme, glyphs), priority: 6 });
+				}
 
 				const rightBlock = fitSegmentsByPriority(rightParts, width, theme.fg("dim", "..."), separator).join(separator);
 				const rightW = visibleWidth(rightBlock);

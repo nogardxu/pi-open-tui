@@ -300,12 +300,14 @@ export function formatTurnTelemetry(
 	iconMode: IconMode,
 	now = new Date(),
 ): string {
-	if (!config.tps && !config.ttft && !config.duration && !config.tokens && !config.cost) return "";
+	if (!config.timestamp && !config.inputTokens && !config.outputTokens && !config.cacheRate
+		&& !config.tps && !config.ttft && !config.duration && !config.cost) return "";
 	const glyphs = resolveGlyphs(iconMode);
-	const parts: string[] = [theme.fg("dim", `${glyphs.working} ${formatClockTime(now)}`)];
-	if (config.tokens) {
-		parts.push(theme.fg("dim", `${glyphs.input} ${fmtTokens(telemetry.inputTokens)}`));
-		parts.push(theme.fg("dim", `${glyphs.output} ${fmtTokens(telemetry.outputTokens)}`));
+	const parts: string[] = [];
+	if (config.timestamp) parts.push(theme.fg("dim", `${glyphs.working} ${formatClockTime(now)}`));
+	if (config.inputTokens) parts.push(theme.fg("dim", `${glyphs.input} ${fmtTokens(telemetry.inputTokens)}`));
+	if (config.outputTokens) parts.push(theme.fg("dim", `${glyphs.output} ${fmtTokens(telemetry.outputTokens)}`));
+	if (config.cacheRate) {
 		const cache = telemetry.cacheHitRate === undefined ? "—" : `${telemetry.cacheHitRate.toFixed(1)}%`;
 		parts.push(theme.fg("dim", `${glyphs.cacheHit} ${cache}`));
 	}
@@ -322,5 +324,5 @@ export function formatTurnTelemetry(
 	if (config.ttft) {
 		parts.push(theme.fg("dim", `${glyphs.latency} ${formatTurnDuration(telemetry.ttftMs)}`));
 	}
-	return parts.join(" ");
+	return parts.join("  ");
 }

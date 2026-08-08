@@ -3,13 +3,14 @@ import { join } from "node:path";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import type { IconMode } from "./icons.ts";
 
-export type SettingsLanguage = "en" | "zh";
 export type FooterSeparator = "dot" | "pipe" | "slash" | "arrow";
 
 export type { IconMode } from "./icons.ts";
 
 export interface FooterSegments {
 	cwd: boolean;
+	model: boolean;
+	thinking: boolean;
 	gitBranch: boolean;
 	gitStatus: boolean;
 	gitCommit: boolean;
@@ -18,20 +19,23 @@ export interface FooterSegments {
 	tokens: boolean;
 	cost: boolean;
 	extensionStatuses: boolean;
+	clock: boolean;
 }
 
 export interface TelemetryConfig {
 	enabled: boolean;
+	timestamp: boolean;
+	inputTokens: boolean;
+	outputTokens: boolean;
+	cacheRate: boolean;
 	tps: boolean;
 	ttft: boolean;
 	duration: boolean;
-	tokens: boolean;
 	cost: boolean;
 }
 
 export interface OpenTuiConfig {
 	enabled: boolean;
-	settingsLanguage: SettingsLanguage;
 	icons: {
 		mode: IconMode;
 	};
@@ -44,7 +48,6 @@ export interface OpenTuiConfig {
 
 export const DEFAULT_CONFIG: OpenTuiConfig = {
 	enabled: true,
-	settingsLanguage: "en",
 	icons: {
 		mode: "auto",
 	},
@@ -53,6 +56,8 @@ export const DEFAULT_CONFIG: OpenTuiConfig = {
 	},
 	footerSegments: {
 		cwd: true,
+		model: true,
+		thinking: true,
 		gitBranch: true,
 		gitStatus: true,
 		gitCommit: false,
@@ -61,13 +66,17 @@ export const DEFAULT_CONFIG: OpenTuiConfig = {
 		tokens: true,
 		cost: true,
 		extensionStatuses: true,
+		clock: true,
 	},
 	telemetry: {
 		enabled: true,
+		timestamp: true,
+		inputTokens: true,
+		outputTokens: true,
+		cacheRate: true,
 		tps: true,
 		ttft: true,
 		duration: true,
-		tokens: true,
 		cost: true,
 	},
 };
@@ -122,9 +131,18 @@ export function loadConfig(notify?: (msg: string, level: "warning" | "info") => 
 		const raw = readFileSync(path, "utf8");
 		const parsed: unknown = JSON.parse(raw);
 		const config = deepMerge(DEFAULT_CONFIG, parsed);
-		if (config.settingsLanguage !== "en" && config.settingsLanguage !== "zh") {
-			config.settingsLanguage = DEFAULT_CONFIG.settingsLanguage;
+		// Drop removed settings and split the legacy telemetry token switch.
+		const rawTelemetry = (parsed as { telemetry?: unknown }).telemetry;
+		if (typeof rawTelemetry === "object" && rawTelemetry !== null && !Array.isArray(rawTelemetry)) {
+			const legacyTelemetry = rawTelemetry as Record<string, unknown>;
+			if (typeof legacyTelemetry.tokens === "boolean") {
+				for (const key of ["inputTokens", "outputTokens", "cacheRate"] as const) {
+					if (legacyTelemetry[key] === undefined) config.telemetry[key] = legacyTelemetry.tokens;
+				}
+			}
 		}
+		delete (config as OpenTuiConfig & { settingsLanguage?: unknown }).settingsLanguage;
+		delete (config.telemetry as TelemetryConfig & { tokens?: unknown }).tokens;
 		if (!["dot", "pipe", "slash", "arrow"].includes(config.footer.separator)) {
 			config.footer.separator = DEFAULT_CONFIG.footer.separator;
 		}

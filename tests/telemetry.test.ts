@@ -94,7 +94,7 @@ test("uses total output over full generation time", () => {
 	});
 	assert.equal(
 		formatTurnTelemetry(telemetry!, theme, DEFAULT_CONFIG.telemetry, "ascii", sampleTime),
-		"o 14:32:07 ↑ 50 ↓ 20 c — $ 0.000 + 5.0s > 4.0 Tok/s ~ 4.0s",
+		"o 14:32:07  ↑ 50  ↓ 20  c —  $ 0.000  + 5.0s  > 4.0 Tok/s  ~ 4.0s",
 	);
 });
 
@@ -170,16 +170,19 @@ test("uses footer semantics and respects telemetry segment settings", () => {
 
 	assert.match(
 		formatTurnTelemetry(telemetry, styledTheme, DEFAULT_CONFIG.telemetry, "ascii", sampleTime),
-		/^o 14:32:07 ↑ 50 ↓ 20 c — \$ 0\.000 \+ 0\.9s > 50\.0 Tok\/s ~ 0\.2s$/,
+		/^o 14:32:07 {2}↑ 50 {2}↓ 20 {2}c — {2}\$ 0\.000 {2}\+ 0\.9s {2}> 50\.0 Tok\/s {2}~ 0\.2s$/,
 	);
 	assert.deepEqual(colors, ["dim", "dim", "dim", "dim", "dim", "dim", "dim", "dim"]);
 
 	const hidden: typeof DEFAULT_CONFIG.telemetry = {
 		enabled: false,
+		timestamp: false,
+		inputTokens: false,
+		outputTokens: false,
+		cacheRate: false,
 		tps: false,
 		ttft: false,
 		duration: false,
-		tokens: false,
 		cost: false,
 	};
 	assert.equal(formatTurnTelemetry(telemetry, theme, hidden, "ascii"), "");

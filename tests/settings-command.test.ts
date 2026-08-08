@@ -76,8 +76,7 @@ test("keeps the changed setting selected", async () => {
 	const settings = await openSettings();
 
 	settings.component.handleInput("\t");
-	settings.component.handleInput("\t");
-	settings.component.handleInput("\x1b[B");
+	for (let i = 0; i < 3; i++) settings.component.handleInput("\x1b[B");
 	assert.match(selectedLine(settings.component), /Git branch/);
 
 	settings.component.handleInput("\r");
@@ -89,9 +88,7 @@ test("remembers the selection for each tab", async () => {
 	const settings = await openSettings();
 
 	settings.component.handleInput("\t");
-	settings.component.handleInput("\t");
-	settings.component.handleInput("\x1b[B");
-	settings.component.handleInput("\t");
+	for (let i = 0; i < 3; i++) settings.component.handleInput("\x1b[B");
 	settings.component.handleInput("\t");
 	settings.component.handleInput("\t");
 	settings.component.handleInput("\t");
@@ -104,43 +101,55 @@ test("configures telemetry from its own tab", async () => {
 
 	settings.component.handleInput("\t");
 	settings.component.handleInput("\t");
-	settings.component.handleInput("\t");
 	assert.match(selectedLine(settings.component), /Enabled/);
 
 	settings.component.handleInput("\r");
 	assert.equal(settings.getConfig().telemetry.enabled, false);
-	settings.component.handleInput("\x1b[B");
+	for (let i = 0; i < 7; i++) settings.component.handleInput("\x1b[B");
 	settings.component.handleInput("\r");
 	assert.equal(settings.getConfig().telemetry.tps, false);
 });
 
-test("supports localized settings and keyboard shortcuts", async () => {
+test("renders a framed English settings dialog with merged general controls", async () => {
 	const settings = await openSettings();
-	assert.match(settings.component.render(80).join("\n"), /Open TUI Settings.*General.*Language/s);
+	const lines = settings.component.render(80);
+	const output = lines.join("\n");
+
+	assert.equal(visibleWidth(lines[0]!), 80);
+	assert.equal(visibleWidth(lines.at(-1)!), 80);
+	assert.match(lines[0]!, /^╭/);
+	assert.match(lines[1]!, /^│\s+│$/);
+	assert.match(lines[2]!, /General/);
+	assert.match(lines.at(-1)!, /^╰/);
+	assert.match(output, /Open TUI Settings.*General.*Icon mode/s);
+	assert.match(output, /Footer.*Telemetry/s);
+	assert.match(output, /─/);
+	assert.doesNotMatch(output, /Language|\[General\]|\[Icons\]|简体中文/);
 
 	settings.component.handleInput("\x1b[B");
 	settings.component.handleInput(" ");
-	assert.equal(settings.getConfig().settingsLanguage, "zh");
-	assert.match(settings.component.render(80).join("\n"), /Open TUI 设置.*常规.*语言.*简体中文/s);
-	assert.match(selectedLine(settings.component), /语言/);
+	assert.equal(settings.getConfig().icons.mode, "nerd");
+	settings.component.handleInput("q");
+	assert.equal(settings.isClosed(), true);
+});
 
-	const reopened = await openSettings(structuredClone(settings.getConfig()));
-	assert.match(reopened.component.render(80).join("\n"), /Open TUI 设置.*简体中文/s);
-
-	reopened.component.handleInput("\x1b[B");
-	reopened.component.handleInput("\x1b[C");
-	assert.match(reopened.component.render(80).join("\n"), /\[图标\]/);
-	reopened.component.handleInput("\x1b[D");
-	assert.match(selectedLine(reopened.component), /语言/);
-	reopened.component.handleInput("q");
-	assert.equal(reopened.isClosed(), true);
+test("keeps the dialog height stable when switching tabs", async () => {
+	for (const width of [80, 48, 24]) {
+		const settings = await openSettings();
+		const heights = [settings.component.render(width).length];
+		settings.component.handleInput("\t");
+		heights.push(settings.component.render(width).length);
+		settings.component.handleInput("\t");
+		heights.push(settings.component.render(width).length);
+		assert.equal(new Set(heights).size, 1, `${width}: ${heights.join(", ")}`);
+		assert.match(settings.component.render(width).at(-2)!, /close/);
+	}
 });
 
 test("configures the extension status line with Space", async () => {
 	const settings = await openSettings();
 	settings.component.handleInput("\x1b[C");
-	settings.component.handleInput("\x1b[C");
-	for (let i = 0; i < 8; i++) settings.component.handleInput("\x1b[B");
+	for (let i = 0; i < 10; i++) settings.component.handleInput("\x1b[B");
 	assert.match(selectedLine(settings.component), /Extension status line/);
 
 	settings.component.handleInput(" ");
@@ -151,8 +160,7 @@ test("configures the extension status line with Space", async () => {
 test("cycles the footer separator from the Footer tab", async () => {
 	const settings = await openSettings();
 	settings.component.handleInput("\x1b[C");
-	settings.component.handleInput("\x1b[C");
-	for (let i = 0; i < 9; i++) settings.component.handleInput("\x1b[B");
+	for (let i = 0; i < 12; i++) settings.component.handleInput("\x1b[B");
 	assert.match(selectedLine(settings.component), /Footer separator/);
 
 	settings.component.handleInput(" ");
@@ -160,10 +168,8 @@ test("cycles the footer separator from the Footer tab", async () => {
 	assert.match(selectedLine(settings.component), /Pipe/);
 });
 
-test("keeps localized settings and values within narrow widths", async () => {
-	const config = structuredClone(DEFAULT_CONFIG);
-	config.settingsLanguage = "zh";
-	const settings = await openSettings(config);
+test("keeps the framed English dialog within narrow widths", async () => {
+	const settings = await openSettings();
 
 	for (const width of [24, 36, 48]) {
 		const lines = settings.component.render(width);
@@ -171,18 +177,37 @@ test("keeps localized settings and values within narrow widths", async () => {
 			assert.ok(visibleWidth(line) <= width, `${visibleWidth(line)} > ${width}: ${line}`);
 		}
 		const output = lines.join("\n");
-		assert.match(output, /开启/);
-		assert.match(output, /简体中文/);
+		assert.match(output, /On/);
+		assert.match(output, /Auto/);
+		assert.doesNotMatch(output, /Language|简体中文/);
 	}
 });
 
-test("falls back to English for an invalid settings language", () => {
+test("drops the removed language setting from older config files", () => {
 	const agentDir = mkdtempSync(join(tmpdir(), "pi-open-tui-"));
 	const previousAgentDir = process.env.PI_CODING_AGENT_DIR;
 	try {
 		process.env.PI_CODING_AGENT_DIR = agentDir;
-		writeFileSync(join(agentDir, "open-tui.json"), JSON.stringify({ settingsLanguage: "de" }), "utf8");
-		assert.equal(loadConfig().settingsLanguage, "en");
+		writeFileSync(join(agentDir, "open-tui.json"), JSON.stringify({ settingsLanguage: "zh" }), "utf8");
+		assert.equal("settingsLanguage" in loadConfig(), false);
+	} finally {
+		if (previousAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
+		else process.env.PI_CODING_AGENT_DIR = previousAgentDir;
+		rmSync(agentDir, { recursive: true, force: true });
+	}
+});
+
+test("splits the legacy telemetry token setting", () => {
+	const agentDir = mkdtempSync(join(tmpdir(), "pi-open-tui-"));
+	const previousAgentDir = process.env.PI_CODING_AGENT_DIR;
+	try {
+		process.env.PI_CODING_AGENT_DIR = agentDir;
+		writeFileSync(join(agentDir, "open-tui.json"), JSON.stringify({ telemetry: { tokens: false } }), "utf8");
+		const config = loadConfig();
+		assert.equal(config.telemetry.inputTokens, false);
+		assert.equal(config.telemetry.outputTokens, false);
+		assert.equal(config.telemetry.cacheRate, false);
+		assert.equal("tokens" in config.telemetry, false);
 	} finally {
 		if (previousAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
 		else process.env.PI_CODING_AGENT_DIR = previousAgentDir;
