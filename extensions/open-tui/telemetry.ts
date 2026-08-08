@@ -293,36 +293,39 @@ function formatClockTime(now: Date): string {
 		.join(":");
 }
 
+type TelemetryTone = "dim" | "muted";
+
 export function formatTurnTelemetry(
 	telemetry: TurnTelemetry,
 	theme: Theme,
 	config: TelemetryConfig,
 	iconMode: IconMode,
 	now = new Date(),
+	tone: TelemetryTone = "dim",
 ): string {
 	if (!config.timestamp && !config.inputTokens && !config.outputTokens && !config.cacheRate
 		&& !config.tps && !config.ttft && !config.duration && !config.cost) return "";
 	const glyphs = resolveGlyphs(iconMode);
 	const parts: string[] = [];
-	if (config.timestamp) parts.push(theme.fg("dim", `${glyphs.working} ${formatClockTime(now)}`));
-	if (config.inputTokens) parts.push(theme.fg("dim", `${glyphs.input} ${fmtTokens(telemetry.inputTokens)}`));
-	if (config.outputTokens) parts.push(theme.fg("dim", `${glyphs.output} ${fmtTokens(telemetry.outputTokens)}`));
+	if (config.timestamp) parts.push(theme.fg(tone, `${glyphs.working} ${formatClockTime(now)}`));
+	if (config.inputTokens) parts.push(theme.fg(tone, `${glyphs.input} ${fmtTokens(telemetry.inputTokens)}`));
+	if (config.outputTokens) parts.push(theme.fg(tone, `${glyphs.output} ${fmtTokens(telemetry.outputTokens)}`));
 	if (config.cacheRate) {
 		const cache = telemetry.cacheHitRate === undefined ? "—" : `${telemetry.cacheHitRate.toFixed(1)}%`;
-		parts.push(theme.fg("dim", `${glyphs.cacheHit} ${cache}`));
+		parts.push(theme.fg(tone, `${glyphs.cacheHit} ${cache}`));
 	}
 	if (config.cost) {
-		parts.push(theme.fg("dim", `${glyphs.cost} ${telemetry.costUsd.toFixed(3)}`));
+		parts.push(theme.fg(tone, `${glyphs.cost} ${telemetry.costUsd.toFixed(3)}`));
 	}
 	if (config.duration) {
-		parts.push(theme.fg("dim", `${glyphs.done} ${formatTurnDuration(telemetry.totalMs)}`));
+		parts.push(theme.fg(tone, `${glyphs.done} ${formatTurnDuration(telemetry.totalMs)}`));
 	}
 	if (config.tps) {
 		const value = telemetry.tps === null ? "—" : `${telemetry.tps.toFixed(1)} Tok/s`;
-		parts.push(theme.fg("dim", `${glyphs.speed} ${value}`));
+		parts.push(theme.fg(tone, `${glyphs.speed} ${value}`));
 	}
 	if (config.ttft) {
-		parts.push(theme.fg("dim", `${glyphs.latency} ${formatTurnDuration(telemetry.ttftMs)}`));
+		parts.push(theme.fg(tone, `${glyphs.latency} ${formatTurnDuration(telemetry.ttftMs)}`));
 	}
 	return parts.join("  ");
 }

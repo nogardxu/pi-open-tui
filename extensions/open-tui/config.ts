@@ -31,6 +31,7 @@ export interface GitConfig {
 
 export interface TelemetryConfig {
 	enabled: boolean;
+	perTurn: boolean;
 	timestamp: boolean;
 	inputTokens: boolean;
 	outputTokens: boolean;
@@ -81,6 +82,7 @@ export const DEFAULT_CONFIG: OpenTuiConfig = {
 	},
 	telemetry: {
 		enabled: true,
+		perTurn: true,
 		timestamp: true,
 		inputTokens: true,
 		outputTokens: true,

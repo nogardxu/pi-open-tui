@@ -53,6 +53,7 @@ const COPY = {
 		outputTokens: "Output tokens",
 		cacheRate: "Cache hit rate",
 		costRate: "Cost",
+		perTurn: "Per-turn output",
 	},
 	values: {
 		on: "On",
@@ -150,6 +151,7 @@ function buildTelemetryItems(config: OpenTuiConfig, copy: SettingsCopy): Setting
 	const flag = (value: boolean) => value ? copy.values.on : copy.values.off;
 	return [
 		{ id: "enabled", label: copy.labels.enabled, currentValue: flag(telemetry.enabled) },
+		{ id: "perTurn", label: copy.labels.perTurn, currentValue: flag(telemetry.perTurn) },
 		{ id: "timestamp", label: "Timestamp", currentValue: flag(telemetry.timestamp) },
 		{ id: "inputTokens", label: copy.labels.inputTokens, currentValue: flag(telemetry.inputTokens) },
 		{ id: "outputTokens", label: copy.labels.outputTokens, currentValue: flag(telemetry.outputTokens) },

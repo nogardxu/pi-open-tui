@@ -60,6 +60,7 @@ Run `/open-tui` to open the interactive settings UI. Configuration is stored at 
   },
   "telemetry": {
     "enabled": true,
+    "perTurn": true,
     "timestamp": true,
     "inputTokens": true,
     "outputTokens": true,
@@ -77,16 +78,17 @@ Run `/open-tui` to open the interactive settings UI. Configuration is stored at 
 - `git.statusRefreshIntervalMs`: Git status polling interval in milliseconds; defaults to `30000` (30 seconds)
 - `footerSegments.gitCommit`: shows short hash + tag on detached HEAD (off by default)
 - `footerSegments.extensionStatuses`: shows statuses published by extensions through Pi's `setStatus()` API inline on the left side (on by default); turn it off to hide them
+- `telemetry.perTurn`: shows telemetry after each completed LLM turn (on by default); turn it off to keep only the settled aggregate notification
 
 ## Turn telemetry
 
-After each complete agent run, open-tui shows one transient notification. Tool-call turns are aggregated into that single result:
+When `telemetry.perTurn` is enabled, open-tui shows a transient notification after each completed LLM turn. When the complete agent run settles, it also shows one aggregated notification across all tool-call turns. The settled aggregate is shown even when per-turn notifications are disabled:
 
 ```text
  14:32:07  ↑ 567  ↓ 1.2K   82.5%   0.012   29.7s  󰓅 42.5 Tok/s   1.2s
 ```
 
-The notification uses the footer's icon mode. All telemetry segments use the `dim` theme color and are separated by two spaces. Configure its master switch, timestamp, input/output token, cache rate, TPS, TTFT, duration, and cost segments from the **Telemetry** tab in `/open-tui`.
+The notifications use the footer's icon mode. Turn telemetry uses the `dim` theme color; the settled aggregate uses the slightly brighter `muted` gray so the two levels are easy to distinguish. Segments are separated by two spaces. Configure its master switch, timestamp, input/output token, cache rate, TPS, TTFT, duration, and cost segments from the **Telemetry** tab in `/open-tui`.
 
 TPS is the complete generation throughput for the agent run: all provider-reported assistant output tokens divided by the summed generation time of every LLM turn, measured from `turn_start` through the assistant `message_end`. This includes time-to-first-token, hidden reasoning, buffering, and stalls so the token count and timing cover the same interval. Tool execution between turns is excluded. A run with no output tokens or no measurable generation time is shown as `—`. The cost segment uses the actual accumulated `usage.cost.total`; it is not a per-million-token rate.
 

@@ -181,9 +181,13 @@ test("uses footer semantics and respects telemetry segment settings", () => {
 		/^o 14:32:07 {2}↑ 50 {2}↓ 20 {2}c — {2}\$ 0\.000 {2}\+ 0\.9s {2}> 50\.0 Tok\/s {2}~ 0\.2s$/,
 	);
 	assert.deepEqual(colors, ["dim", "dim", "dim", "dim", "dim", "dim", "dim", "dim"]);
+	colors.length = 0;
+	formatTurnTelemetry(telemetry, styledTheme, DEFAULT_CONFIG.telemetry, "ascii", sampleTime, "muted");
+	assert.deepEqual(colors, ["muted", "muted", "muted", "muted", "muted", "muted", "muted", "muted"]);
 
 	const hidden: typeof DEFAULT_CONFIG.telemetry = {
 		enabled: false,
+		perTurn: false,
 		timestamp: false,
 		inputTokens: false,
 		outputTokens: false,
@@ -403,9 +407,16 @@ test("aggregates all output and generation time across an agent run", () => {
 	assert.equal(telemetry.rateUsdPerMTokens, 4);
 });
 
-test("open-tui notifies once after a complete agent run", () => {
+test("open-tui notifies for each turn and once after a complete agent run", () => {
 	const handlers = new Map<string, Array<(event: any, ctx: ExtensionContext) => void>>();
 	const notifications: string[] = [];
+	const notificationColors: string[] = [];
+	const notificationTheme = {
+		fg: (color: string, text: string) => {
+			notificationColors.push(color);
+			return text;
+		},
+	} as Theme;
 	const pi = {
 		on(event: string, handler: (event: any, ctx: ExtensionContext) => void) {
 			handlers.set(event, [...(handlers.get(event) ?? []), handler]);
@@ -416,12 +427,13 @@ test("open-tui notifies once after a complete agent run", () => {
 	const ctx = {
 		hasUI: true,
 		mode: "tui",
-		ui: { theme, notify: (message: string) => notifications.push(message) },
+		ui: { theme: notificationTheme, notify: (message: string) => notifications.push(message) },
 	} as unknown as ExtensionContext;
 	const emit = (event: string, payload: unknown) => {
 		for (const handler of handlers.get(event) ?? []) handler(payload, ctx);
 	};
 	const message = makeMessage();
+	const secondMessage = makeMessage(10, 30);
 
 	openTui(pi);
 	emit("agent_start", { type: "agent_start" });
@@ -431,9 +443,25 @@ test("open-tui notifies once after a complete agent run", () => {
 	emit("message_end", { type: "message_end", message });
 	emit("turn_end", { type: "turn_end", turnIndex: 0, message, toolResults: [] });
 
-	assert.equal(notifications.length, 0);
-	emit("agent_settled", { type: "agent_settled" });
 	assert.equal(notifications.length, 1);
 	assert.match(notifications[0]!, /Tok\/s/);
 	assert.doesNotMatch(notifications[0]!, /TPS|TTFT/);
+	assert.deepEqual(notificationColors, ["dim", "dim", "dim", "dim", "dim", "dim", "dim", "dim"]);
+
+	emit("turn_start", { type: "turn_start", turnIndex: 1, timestamp: Date.now() });
+	emit("message_start", { type: "message_start", message: secondMessage });
+	emit("message_update", update(secondMessage));
+	emit("message_end", { type: "message_end", message: secondMessage });
+	emit("turn_end", { type: "turn_end", turnIndex: 1, message: secondMessage, toolResults: [] });
+
+	assert.equal(notifications.length, 2);
+	assert.match(notifications[1]!, /Tok\/s/);
+	assert.doesNotMatch(notifications[1]!, /TPS|TTFT/);
+	assert.deepEqual(notificationColors.slice(8), ["dim", "dim", "dim", "dim", "dim", "dim", "dim", "dim"]);
+
+	emit("agent_settled", { type: "agent_settled" });
+	assert.equal(notifications.length, 3);
+	assert.match(notifications[2]!, /Tok\/s/);
+	assert.doesNotMatch(notifications[2]!, /TPS|TTFT/);
+	assert.deepEqual(notificationColors.slice(16), ["muted", "muted", "muted", "muted", "muted", "muted", "muted", "muted"]);
 });

@@ -105,6 +105,10 @@ test("configures telemetry from its own tab", async () => {
 
 	settings.component.handleInput("\r");
 	assert.equal(settings.getConfig().telemetry.enabled, false);
+	settings.component.handleInput("\x1b[B");
+	assert.match(selectedLine(settings.component), /Per-turn output/);
+	settings.component.handleInput("\r");
+	assert.equal(settings.getConfig().telemetry.perTurn, false);
 	for (let i = 0; i < 7; i++) settings.component.handleInput("\x1b[B");
 	settings.component.handleInput("\r");
 	assert.equal(settings.getConfig().telemetry.tps, false);

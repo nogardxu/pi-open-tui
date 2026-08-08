@@ -7,7 +7,7 @@ import { readGitStatus } from "./git.ts";
 import { readRuntimeInfo } from "./runtime.ts";
 import { SessionLifecycle } from "./session-lifecycle.ts";
 import { registerSettingsCommand } from "./settings-command.ts";
-import { formatTurnTelemetry, TurnTelemetryTracker } from "./telemetry.ts";
+import { formatTurnTelemetry, type TurnTelemetry, TurnTelemetryTracker } from "./telemetry.ts";
 import { formatDuration } from "./utils.ts";
 import {
 	createInitialState,
@@ -188,6 +188,12 @@ export default function (pi: ExtensionAPI) {
 		requestFooterRender?.();
 	};
 
+	const notifyTelemetry = (telemetry: TurnTelemetry | undefined, ctx: ExtensionContext, tone: "dim" | "muted") => {
+		if (!telemetry || !config.enabled || !config.telemetry.enabled || !isTuiContext(ctx)) return;
+		const message = formatTurnTelemetry(telemetry, ctx.ui.theme, config.telemetry, config.icons.mode, undefined, tone);
+		if (message) ctx.ui.notify(message, "info");
+	};
+
 	pi.on("session_start", async (_event, ctx) => {
 		sessionLifecycle.start();
 		lastCtx = ctx;
@@ -245,16 +251,14 @@ export default function (pi: ExtensionAPI) {
 		turnTelemetry.handle(event);
 	});
 
-	pi.on("turn_end", (event) => {
-		turnTelemetry.handle(event);
+	pi.on("turn_end", (event, ctx) => {
+		const telemetry = turnTelemetry.handle(event);
+		if (config.telemetry.perTurn) notifyTelemetry(telemetry, ctx, "dim");
 	});
 
 	pi.on("agent_settled", (event, ctx) => {
 		const telemetry = turnTelemetry.handle(event);
-		if (telemetry && config.enabled && config.telemetry.enabled && isTuiContext(ctx)) {
-			const message = formatTurnTelemetry(telemetry, ctx.ui.theme, config.telemetry, config.icons.mode);
-			if (message) ctx.ui.notify(message, "info");
-		}
+		notifyTelemetry(telemetry, ctx, "muted");
 	});
 
 	pi.on("model_select", (_event, ctx) => {
